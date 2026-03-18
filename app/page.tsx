@@ -451,29 +451,38 @@ export default function Home() {
     maxWidth: "980px",
   }}
 >
+ <div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    gap: "18px",
+  }}
+>
+  {/* 第一列：國文 英文 數學 */}
   <div
     style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(2, minmax(320px, 1fr))",
-      gap: "18px 40px",
-      alignItems: "start",
+      display: "flex",
+      gap: "40px",
+      alignItems: "center",
+      justifyContent: "center",
+      flexWrap: "wrap",
     }}
   >
-    {scoreFields.map((field) => (
+    {(["Chinese", "English", "Math"] as FilterField[]).map((field) => (
       <div
         key={field}
         style={{
           display: "flex",
-          alignItems: "center",
-          gap: "16px",
+          alignItems: "flex-start",
+          gap: "12px",
         }}
       >
         <label
           style={{
             fontSize: "28px",
-            color: "#111827",
-            fontWeight: 500,
-            width: "200px",
+            color: "#374151",
+            fontWeight: 600,
+            width: "90px",
             flexShrink: 0,
           }}
         >
@@ -494,6 +503,53 @@ export default function Home() {
       </div>
     ))}
   </div>
+
+  {/* 第二列：專業一 專業二 */}
+  <div
+    style={{
+      display: "flex",
+      gap: "40px",
+      alignItems: "center",
+      justifyContent: "flex-start",
+      flexWrap: "wrap",
+    }}
+  >
+    {(["Professional_1", "Professional_2"] as FilterField[]).map((field) => (
+      <div
+        key={field}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+        }}
+      >
+        <label
+          style={{
+            fontSize: "28px",
+            color: "#374151",
+            fontWeight: 600,
+            width: "90px",
+            flexShrink: 0,
+          }}
+        >
+          {scoreFieldLabels[field]}
+        </label>
+
+        <input
+          type="number"
+          value={multiplier[field]}
+          onChange={(e) =>
+            setMultiplier({
+              ...multiplier,
+              [field]: Number(e.target.value),
+            })
+          }
+          style={inputStyle}
+        />
+      </div>
+    ))}
+  </div>
+</div>
 </div>
         <button onClick={calculate} style={runButtonStyle}>
           執行
