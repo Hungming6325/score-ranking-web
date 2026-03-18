@@ -32,8 +32,18 @@ type ParsedFileResult = {
 type HistogramBin = {
   score: number;
   parentCount: number;
-  simCount: number;
+  simRawCount: number;
+  simFilteredCount: number;
 };
+
+const departmentOptions = [
+  "林口護理系",
+  "嘉義護理系",
+  "保營系",
+  "妝品系",
+  "幼保系",
+  "呼照系",
+];
 
 const categoryOptions = [
   "01機械群",
@@ -65,6 +75,13 @@ const scoreFields: FilterField[] = [
   "Professional_1",
   "Professional_2",
 ];
+const scoreFieldLabels: Record<FilterField, string> = {
+  Chinese: "國文",
+  English: "英文",
+  Math: "數學",
+  Professional_1: "專業一",
+  Professional_2: "專業二",
+};
 
 export default function Home() {
   const parentFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -80,6 +97,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [quota, setQuota] = useState<number>(0);
   const [steps, setSteps] = useState<string[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   const [multiplier, setMultiplier] = useState<Record<FilterField, number>>({
@@ -157,7 +175,7 @@ export default function Home() {
       (parsed) => {
         if (!parsed.ok) {
           setParentData([]);
-          setError(parsed.error || "母體成績檔案讀取失敗");
+          setError(parsed.error || "全國成績檔案讀取失敗");
           return;
         }
 
@@ -195,7 +213,7 @@ export default function Home() {
     setSteps([]);
 
     if (!parentData.length) {
-      setError("請先上傳母體成績檔案");
+      setError("請先上傳全國成績檔案");
       return;
     }
 
@@ -245,7 +263,7 @@ export default function Home() {
             0
           ),
         }))
-        .sort((a, b) => Number(b.__groupScore) - Number(a.__groupScore))
+        .sort((a, b) => Number((b as RowData & { __groupScore: number }).__groupScore) - Number((a as RowData & { __groupScore: number }).__groupScore))
         .slice(0, limit)
         .map(({ __groupScore, ...rest }) => rest as RowData);
 
@@ -265,6 +283,10 @@ export default function Home() {
     );
     return Math.min(...totals);
   }, [parentData]);
+
+  const simDisplayCount = useMemo(() => {
+    return simData.length;
+  }, [simData]);
 
   return (
     <main
@@ -296,28 +318,75 @@ export default function Home() {
           成績倍率系統
         </h1>
 
-        <h2 style={sectionTitleStyle}>招生群類別</h2>
-        <div style={{ marginBottom: "28px" }}>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            style={selectStyle}
-          >
-            <option value="">請選擇群類別</option>
-            {categoryOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
+        <h2 style={sectionTitleStyle}>招生設定</h2>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "20px",
+            alignItems: "center",
+            flexWrap: "wrap",
+            marginBottom: "28px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: "22px",
+                color: "#374151",
+                marginBottom: "8px",
+                fontWeight: 600,
+              }}
+            >
+              招生系科
+            </div>
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="">請選擇系科</option>
+              {departmentOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <div
+              style={{
+                fontSize: "22px",
+                color: "#374151",
+                marginBottom: "8px",
+                fontWeight: 600,
+              }}
+            >
+              招生群類別
+            </div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="">請選擇群類別</option>
+              {categoryOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div
           style={{
-            marginBottom: "18px",
+            marginTop: "20px",
+            marginBottom: "28px",
             display: "flex",
             alignItems: "center",
-            gap: "16px",
+            gap: "24px",
             flexWrap: "wrap",
           }}
         >
@@ -333,23 +402,13 @@ export default function Home() {
             onClick={() => parentFileInputRef.current?.click()}
             style={buttonStyle}
           >
-            選擇母體成績檔案
+            選擇全國成績檔案
           </button>
 
-          <span style={{ fontSize: "28px", color: "#1f2937" }}>
+          <span style={{ fontSize: "28px", color: "#1f2937", marginRight: "16px" }}>
             {parentFileName || "尚未選擇檔案"}
           </span>
-        </div>
 
-        <div
-          style={{
-            marginBottom: "28px",
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-            flexWrap: "wrap",
-          }}
-        >
           <input
             ref={simFileInputRef}
             type="file"
@@ -381,49 +440,61 @@ export default function Home() {
           />
         </div>
 
-        <h2 style={sectionTitleStyle}>篩選倍率</h2>
-        <div
+<h2 style={sectionTitleStyle}>篩選倍率</h2>
+<div
+  style={{
+    background: "#f8fafc",
+    border: "1px solid #dbe3ef",
+    borderRadius: "16px",
+    padding: "20px 24px",
+    marginBottom: "28px",
+    maxWidth: "980px",
+  }}
+>
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(2, minmax(320px, 1fr))",
+      gap: "18px 40px",
+      alignItems: "start",
+    }}
+  >
+    {scoreFields.map((field) => (
+      <div
+        key={field}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+        }}
+      >
+        <label
           style={{
-            display: "grid",
-            gridTemplateColumns: "260px 180px",
-            gap: "18px 20px",
-            alignItems: "center",
-            marginBottom: "28px",
-            maxWidth: "520px",
+            fontSize: "28px",
+            color: "#111827",
+            fontWeight: 500,
+            width: "200px",
+            flexShrink: 0,
           }}
         >
-          {scoreFields.map((field) => (
-            <div
-              key={field}
-              style={{
-                display: "contents",
-              }}
-            >
-              <label
-                style={{
-                  fontSize: "28px",
-                  color: "#111827",
-                  fontWeight: 500,
-                }}
-              >
-                {field}
-              </label>
+          {scoreFieldLabels[field]}
+        </label>
 
-              <input
-                type="number"
-                value={multiplier[field]}
-                onChange={(e) =>
-                  setMultiplier({
-                    ...multiplier,
-                    [field]: Number(e.target.value),
-                  })
-                }
-                style={inputStyle}
-              />
-            </div>
-          ))}
-        </div>
-
+        <input
+          type="number"
+          value={multiplier[field]}
+          onChange={(e) =>
+            setMultiplier({
+              ...multiplier,
+              [field]: Number(e.target.value),
+            })
+          }
+          style={inputStyle}
+        />
+      </div>
+    ))}
+  </div>
+</div>
         <button onClick={calculate} style={runButtonStyle}>
           執行
         </button>
@@ -475,21 +546,32 @@ export default function Home() {
         <h2 style={sectionTitleStyle}>結果</h2>
         <div
           style={{
+            display: "flex",
+            gap: "32px",
+            alignItems: "center",
+            flexWrap: "wrap",
             marginBottom: "8px",
             fontSize: "22px",
             color: "#374151",
           }}
         >
-          群類別：{selectedCategory || "未選擇"}
+          <div>系科：{selectedDepartment || "未選擇"}</div>
+          <div>群類別：{selectedCategory || "未選擇"}</div>
         </div>
+
         <div
           style={{
+            display: "flex",
+            gap: "32px",
+            alignItems: "center",
+            flexWrap: "wrap",
             marginBottom: "20px",
             fontSize: "22px",
             color: "#374151",
           }}
         >
-          母體人數：{parentDisplayCount}
+          <div>全國人數：{parentDisplayCount}</div>
+          <div>模擬人數：{simDisplayCount}</div>
         </div>
 
         <div
@@ -502,7 +584,8 @@ export default function Home() {
             fontSize: "18px",
           }}
         >
-          <LegendBox color="#8bb8ea" label="母體成績分布" />
+          <LegendBox color="#8bb8ea" label="全國成績分布" />
+          <LegendBox color="rgba(251, 191, 36, 0.65)" label="未篩選模擬成績分布" />
           <LegendBox color="rgba(45, 92, 184, 0.85)" label="篩選後成績分布" />
         </div>
 
@@ -516,9 +599,10 @@ export default function Home() {
           {scoreFields.map((field) => (
             <OverlayHistogramCard
               key={field}
-              title={field}
+              title={scoreFieldLabels[field]}
               parentRows={parentData}
-              simRows={result}
+              simRawRows={simData}
+              simFilteredRows={result}
               field={field}
             />
           ))}
@@ -549,18 +633,26 @@ function LegendBox({ color, label }: { color: string; label: string }) {
 function OverlayHistogramCard({
   title,
   parentRows,
-  simRows,
+  simRawRows,
+  simFilteredRows,
   field,
 }: {
   title: string;
   parentRows: RowData[];
-  simRows: RowData[];
+  simRawRows: RowData[];
+  simFilteredRows: RowData[];
   field: FilterField;
 }) {
-  const bins = buildOverlayBins(parentRows, simRows, field);
-  const maxCount = Math.max(...bins.map((b) => b.parentCount), 1);
+  const bins = buildOverlayBins(parentRows, simRawRows, simFilteredRows, field);
+  const maxCount = Math.max(
+    ...bins.map((b) =>
+      Math.max(b.parentCount, b.simRawCount, b.simFilteredCount)
+    ),
+    1
+  );
 
   const parentStats = computeParentStats(parentRows, field);
+  const simStats = computeParentStats(simRawRows, field);
 
   return (
     <div
@@ -580,21 +672,75 @@ function OverlayHistogramCard({
           textAlign: "center",
         }}
       >
-        {title} Score Distribution
+        {title}成績分布
       </h3>
 
-      <div
-        style={{
-          textAlign: "center",
-          fontSize: "15px",
-          color: "#374151",
-          marginBottom: "12px",
-        }}
-      >
-        平均數 = {parentStats.mean.toFixed(2)}　標準差 = {parentStats.sd.toFixed(2)}　總人數 ={" "}
-        {parentStats.total}
-      </div>
+<div
+  style={{
+    textAlign: "center",
+    fontSize: "15px",
+    marginBottom: "12px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  }}
+>
+  {/* 全國 */}
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "120px 1fr 1fr 1fr",
+      alignItems: "center",
+      justifyContent: "center",
+      columnGap: "16px",
+    }}
+  >
+    <span style={{ color: "#6b7280", textAlign: "right" }}>全國</span>
 
+    <div>
+      <span style={{ color: "#9ca3af" }}>平均數 </span>
+      <span style={{ fontWeight: 600 }}>{parentStats.mean.toFixed(2)}</span>
+    </div>
+
+    <div>
+      <span style={{ color: "#9ca3af" }}>標準差 </span>
+      <span style={{ fontWeight: 600 }}>{parentStats.sd.toFixed(2)}</span>
+    </div>
+
+    <div>
+      <span style={{ color: "#9ca3af" }}>總人數 </span>
+      <span style={{ fontWeight: 600 }}>{parentStats.total.toLocaleString()}</span>
+    </div>
+  </div>
+
+  {/* 模擬 */}
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "120px 1fr 1fr 1fr",
+      alignItems: "center",
+      justifyContent: "center",
+      columnGap: "16px",
+    }}
+  >
+    <span style={{ color: "#9ca3af", textAlign: "right" }}>模擬</span>
+
+    <div>
+      <span style={{ color: "#9ca3af" }}>平均數 </span>
+      <span style={{ fontWeight: 600 }}>{simStats.mean.toFixed(2)}</span>
+    </div>
+
+    <div>
+      <span style={{ color: "#9ca3af" }}>標準差 </span>
+      <span style={{ fontWeight: 600 }}>{simStats.sd.toFixed(2)}</span>
+    </div>
+
+    <div>
+      <span style={{ color: "#9ca3af" }}>總人數 </span>
+      <span style={{ fontWeight: 600 }}>{simStats.total.toLocaleString()}</span>
+    </div>
+  </div>
+</div>
       {bins.length === 0 ? (
         <div style={{ color: "#6b7280", fontSize: "18px" }}>尚無資料</div>
       ) : (
@@ -641,21 +787,29 @@ function OverlayHistogramCard({
             const chartWidth = 540;
             const baseX = 70;
             const slotWidth = chartWidth / bins.length;
+
             const parentBarWidth = Math.max(slotWidth * 0.82, 4);
-            const simBarWidth = Math.max(slotWidth * 0.46, 3);
+            const simRawBarWidth = Math.max(slotWidth * 0.6, 3);
+            const simFilteredBarWidth = Math.max(slotWidth * 0.36, 2);
 
             const xParent = baseX + index * slotWidth + (slotWidth - parentBarWidth) / 2;
-            const xSim = baseX + index * slotWidth + (slotWidth - simBarWidth) / 2;
+            const xSimRaw = baseX + index * slotWidth + (slotWidth - simRawBarWidth) / 2;
+            const xSimFiltered =
+              baseX + index * slotWidth + (slotWidth - simFilteredBarWidth) / 2;
 
             const parentHeight = (bin.parentCount / maxCount) * 250;
-            const simHeight = (bin.simCount / maxCount) * 250;
+            const simRawHeight = (bin.simRawCount / maxCount) * 250;
+            const simFilteredHeight = (bin.simFilteredCount / maxCount) * 250;
 
             const yParent = 310 - parentHeight;
-            const ySim = 310 - simHeight;
+            const ySimRaw = 310 - simRawHeight;
+            const ySimFiltered = 310 - simFilteredHeight;
 
             return (
               <g key={index}>
-                <title>{`${bin.score}分 ｜ 母體 ${bin.parentCount} 人 ｜ 篩選後 ${bin.simCount} 人`}</title>
+                <title>
+                  {`${bin.score}分 ｜ 全國 ${bin.parentCount} 人 ｜ 未篩選模擬 ${bin.simRawCount} 人 ｜ 篩選後 ${bin.simFilteredCount} 人`}
+                </title>
 
                 <rect
                   x={xParent}
@@ -665,10 +819,17 @@ function OverlayHistogramCard({
                   fill="#8bb8ea"
                 />
                 <rect
-                  x={xSim}
-                  y={ySim}
-                  width={simBarWidth}
-                  height={simHeight}
+                  x={xSimRaw}
+                  y={ySimRaw}
+                  width={simRawBarWidth}
+                  height={simRawHeight}
+                  fill="rgba(251, 191, 36, 0.65)"
+                />
+                <rect
+                  x={xSimFiltered}
+                  y={ySimFiltered}
+                  width={simFilteredBarWidth}
+                  height={simFilteredHeight}
                   fill="rgba(45, 92, 184, 0.85)"
                 />
 
@@ -694,7 +855,8 @@ function OverlayHistogramCard({
 
 function buildOverlayBins(
   parentRows: RowData[],
-  simRows: RowData[],
+  simRawRows: RowData[],
+  simFilteredRows: RowData[],
   field: FilterField
 ): HistogramBin[] {
   const parentMap = new Map<number, number>();
@@ -709,21 +871,40 @@ function buildOverlayBins(
     }
   });
 
-  const simMap = new Map<number, number>();
-  simRows.forEach((row) => {
+  const simRawMap = new Map<number, number>();
+  simRawRows.forEach((row) => {
     const score = Number(row[field] || 0);
     if (Number.isFinite(score)) {
       const roundedScore = Math.round(score);
-      simMap.set(roundedScore, (simMap.get(roundedScore) || 0) + 1);
+      simRawMap.set(roundedScore, (simRawMap.get(roundedScore) || 0) + 1);
     }
   });
 
-  const allScores = [...new Set([...parentMap.keys(), ...simMap.keys()])].sort((a, b) => a - b);
+  const simFilteredMap = new Map<number, number>();
+  simFilteredRows.forEach((row) => {
+    const score = Number(row[field] || 0);
+    if (Number.isFinite(score)) {
+      const roundedScore = Math.round(score);
+      simFilteredMap.set(
+        roundedScore,
+        (simFilteredMap.get(roundedScore) || 0) + 1
+      );
+    }
+  });
+
+  const allScores = [
+    ...new Set([
+      ...parentMap.keys(),
+      ...simRawMap.keys(),
+      ...simFilteredMap.keys(),
+    ]),
+  ].sort((a, b) => a - b);
 
   return allScores.map((score) => ({
     score,
     parentCount: parentMap.get(score) || 0,
-    simCount: simMap.get(score) || 0,
+    simRawCount: simRawMap.get(score) || 0,
+    simFilteredCount: simFilteredMap.get(score) || 0,
   }));
 }
 
@@ -829,9 +1010,9 @@ const runButtonStyle: React.CSSProperties = {
 };
 
 const inputStyle: React.CSSProperties = {
-  width: "160px",
-  padding: "12px 14px",
-  fontSize: "28px",
+  width: "130px",
+  padding: "10px 12px",
+  fontSize: "24px",
   border: "2px solid #94a3b8",
   borderRadius: "12px",
   backgroundColor: "#f1f5f9",
@@ -840,7 +1021,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 const selectStyle: React.CSSProperties = {
-  width: "520px",
+  width: "320px",
   maxWidth: "100%",
   padding: "12px 14px",
   fontSize: "24px",
