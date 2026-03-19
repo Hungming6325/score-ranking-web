@@ -661,10 +661,14 @@ function OverlayHistogramCard({
   field: FilterField;
 }) {
   const bins = buildOverlayBins(parentRows, simRawRows, simFilteredRows, field);
-  const maxCount = Math.max(
-    ...bins.map((b) =>
-      Math.max(b.parentCount, b.simRawCount, b.simFilteredCount)
-    ),
+
+  const leftMaxCount = Math.max(
+    ...bins.map((b) => b.parentCount),
+    1
+  );
+
+  const rightMaxCount = Math.max(
+    ...bins.map((b) => Math.max(b.simRawCount, b.simFilteredCount)),
     1
   );
 
@@ -676,62 +680,63 @@ function OverlayHistogramCard({
       <h3 style={chartTitleStyle}>{title}成績分布</h3>
 
       <div style={chartStatsWrapStyle}>
-  <div style={chartStatsRowStyle}>
-    <span style={statsTagStyle}>全國</span>
+        <div style={chartStatsRowStyle}>
+          <span style={statsTagStyle}>全國</span>
 
-    <span>
-      平均數{" "}
-      <b style={{ fontSize: "20px" }}>{parentStats.mean.toFixed(2)}</b>
-    </span>
+          <span>
+            平均數{" "}
+            <b style={{ fontSize: "20px" }}>{parentStats.mean.toFixed(2)}</b>
+          </span>
 
-    <span>
-      標準差{" "}
-      <b style={{ fontSize: "20px" }}>{parentStats.sd.toFixed(2)}</b>
-    </span>
+          <span>
+            標準差{" "}
+            <b style={{ fontSize: "20px" }}>{parentStats.sd.toFixed(2)}</b>
+          </span>
 
-    <span>
-      總人數{" "}
-      <b style={{ fontSize: "20px" }}>
-        {parentStats.total.toLocaleString()}
-      </b>
-    </span>
-  </div>
+          <span>
+            總人數{" "}
+            <b style={{ fontSize: "20px" }}>
+              {parentStats.total.toLocaleString()}
+            </b>
+          </span>
+        </div>
 
-  <div style={chartStatsRowStyle}>
-    <span
-      style={{
-        ...statsTagStyle,
-        background: "#f8fafc",
-        color: "#64748b",
-      }}
-    >
-      模擬
-    </span>
+        <div style={chartStatsRowStyle}>
+          <span
+            style={{
+              ...statsTagStyle,
+              background: "#f8fafc",
+              color: "#64748b",
+            }}
+          >
+            模擬
+          </span>
 
-    <span>
-      平均數{" "}
-      <b style={{ fontSize: "20px" }}>{simStats.mean.toFixed(2)}</b>
-    </span>
+          <span>
+            平均數{" "}
+            <b style={{ fontSize: "20px" }}>{simStats.mean.toFixed(2)}</b>
+          </span>
 
-    <span>
-      標準差{" "}
-      <b style={{ fontSize: "20px" }}>{simStats.sd.toFixed(2)}</b>
-    </span>
+          <span>
+            標準差{" "}
+            <b style={{ fontSize: "20px" }}>{simStats.sd.toFixed(2)}</b>
+          </span>
 
-    <span>
-      總人數{" "}
-      <b style={{ fontSize: "20px" }}>
-        {simStats.total.toLocaleString()}
-      </b>
-    </span>
-  </div>
-</div>
+          <span>
+            總人數{" "}
+            <b style={{ fontSize: "20px" }}>
+              {simStats.total.toLocaleString()}
+            </b>
+          </span>
+        </div>
+      </div>
 
       {bins.length === 0 ? (
         <div style={emptyChartStyle}>尚無資料</div>
       ) : (
-        <svg viewBox="0 0 640 380" style={{ width: "100%", height: "auto" }}>
+        <svg viewBox="0 0 660 380" style={{ width: "100%", height: "auto" }}>
           <line x1="60" y1="25" x2="60" y2="310" stroke="#0f172a" strokeWidth="1.5" />
+          <line x1="615" y1="25" x2="615" y2="310" stroke="#2563eb" strokeWidth="1.5" />
           <line x1="60" y1="310" x2="615" y2="310" stroke="#0f172a" strokeWidth="1.5" />
 
           <text
@@ -742,17 +747,28 @@ function OverlayHistogramCard({
             fontSize="16"
             fill="#0f172a"
           >
-            人數
+            全國人數
+          </text>
+
+          <text
+            x="645"
+            y="170"
+            transform="rotate(90 645 170)"
+            textAnchor="middle"
+            fontSize="16"
+            fill="#2563eb"
+          >
+            模擬人數
           </text>
 
           <text x="338" y="355" textAnchor="middle" fontSize="16" fill="#0f172a">
             分數
           </text>
 
-          {buildYTicks(maxCount).map((tick, idx) => {
-            const y = 310 - (tick / maxCount) * 250;
+          {buildYTicks(leftMaxCount).map((tick, idx) => {
+            const y = 310 - (tick / leftMaxCount) * 250;
             return (
-              <g key={idx}>
+              <g key={`left-${idx}`}>
                 <line x1="55" y1={y} x2="60" y2={y} stroke="#0f172a" strokeWidth="1" />
                 <text x="48" y={y + 4} textAnchor="end" fontSize="12" fill="#475569">
                   {tick}
@@ -765,6 +781,18 @@ function OverlayHistogramCard({
                   stroke="#e2e8f0"
                   strokeWidth="1"
                 />
+              </g>
+            );
+          })}
+
+          {buildYTicks(rightMaxCount).map((tick, idx) => {
+            const y = 310 - (tick / rightMaxCount) * 250;
+            return (
+              <g key={`right-${idx}`}>
+                <line x1="615" y1={y} x2="620" y2={y} stroke="#2563eb" strokeWidth="1" />
+                <text x="628" y={y + 4} textAnchor="start" fontSize="12" fill="#2563eb">
+                  {tick}
+                </text>
               </g>
             );
           })}
@@ -783,9 +811,9 @@ function OverlayHistogramCard({
             const xSimFiltered =
               baseX + index * slotWidth + (slotWidth - simFilteredBarWidth) / 2;
 
-            const parentHeight = (bin.parentCount / maxCount) * 250;
-            const simRawHeight = (bin.simRawCount / maxCount) * 250;
-            const simFilteredHeight = (bin.simFilteredCount / maxCount) * 250;
+            const parentHeight = (bin.parentCount / leftMaxCount) * 250;
+            const simRawHeight = (bin.simRawCount / rightMaxCount) * 250;
+            const simFilteredHeight = (bin.simFilteredCount / rightMaxCount) * 250;
 
             const yParent = 310 - parentHeight;
             const ySimRaw = 310 - simRawHeight;
@@ -794,7 +822,7 @@ function OverlayHistogramCard({
             return (
               <g key={index}>
                 <title>
-                  {`${bin.score}分 ｜ 全國 ${bin.parentCount} 人 ｜ 未篩選模擬 ${bin.simRawCount} 人 ｜ 篩選後 ${bin.simFilteredCount} 人`}
+                  {`${bin.score}分 ｜ 全國(左軸) ${bin.parentCount} 人 ｜ 未篩選模擬(右軸) ${bin.simRawCount} 人 ｜ 篩選後(右軸) ${bin.simFilteredCount} 人`}
                 </title>
 
                 <rect
