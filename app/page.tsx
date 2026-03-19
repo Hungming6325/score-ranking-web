@@ -370,6 +370,25 @@ export default function Home() {
     return simData.length;
   }, [simData]);
 
+  const globalLeftAxisMax = useMemo(() => {
+    const allBins = scoreFields.flatMap((field) =>
+      buildOverlayBins(parentData, simData, result, field)
+    );
+    const maxValue = Math.max(...allBins.map((b) => b.parentCount), 1);
+    return getNiceAxisMax(maxValue);
+  }, [parentData, simData, result]);
+
+  const globalRightAxisMax = useMemo(() => {
+    const allBins = scoreFields.flatMap((field) =>
+      buildOverlayBins(parentData, simData, result, field)
+    );
+    const maxValue = Math.max(
+      ...allBins.map((b) => Math.max(b.simRawCount, b.simFilteredCount)),
+      1
+    );
+    return getNiceAxisMax(maxValue);
+  }, [parentData, simData, result]);
+
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
@@ -596,6 +615,8 @@ export default function Home() {
                     simRawRows={simData}
                     simFilteredRows={result}
                     field={field}
+                    leftAxisMax={globalLeftAxisMax}
+                    rightAxisMax={globalRightAxisMax}
                   />
                 ))}
               </div>
@@ -653,24 +674,23 @@ function OverlayHistogramCard({
   simRawRows,
   simFilteredRows,
   field,
+  leftAxisMax,
+  rightAxisMax,
 }: {
   title: string;
   parentRows: RowData[];
   simRawRows: RowData[];
   simFilteredRows: RowData[];
   field: FilterField;
+  leftAxisMax: number;
+  rightAxisMax: number;
 }) {
   const bins = buildOverlayBins(parentRows, simRawRows, simFilteredRows, field);
 
-  const leftMaxCount = Math.max(
-    ...bins.map((b) => b.parentCount),
-    1
-  );
-
-  const rightMaxCount = Math.max(
-    ...bins.map((b) => Math.max(b.simRawCount, b.simFilteredCount)),
-    1
-  );
+  const leftMaxCount =
+    Number.isFinite(leftAxisMax) && leftAxisMax > 0 ? leftAxisMax : 1;
+  const rightMaxCount =
+    Number.isFinite(rightAxisMax) && rightAxisMax > 0 ? rightAxisMax : 1;
 
   const parentStats = computeParentStats(parentRows, field);
   const simStats = computeSimStats(simRawRows, field);
@@ -682,17 +702,12 @@ function OverlayHistogramCard({
       <div style={chartStatsWrapStyle}>
         <div style={chartStatsRowStyle}>
           <span style={statsTagStyle}>全國</span>
-
           <span>
-            平均數{" "}
-            <b style={{ fontSize: "20px" }}>{parentStats.mean.toFixed(2)}</b>
+            平均數 <b style={{ fontSize: "20px" }}>{parentStats.mean.toFixed(2)}</b>
           </span>
-
           <span>
-            標準差{" "}
-            <b style={{ fontSize: "20px" }}>{parentStats.sd.toFixed(2)}</b>
+            標準差 <b style={{ fontSize: "20px" }}>{parentStats.sd.toFixed(2)}</b>
           </span>
-
           <span>
             總人數{" "}
             <b style={{ fontSize: "20px" }}>
@@ -711,17 +726,12 @@ function OverlayHistogramCard({
           >
             模擬
           </span>
-
           <span>
-            平均數{" "}
-            <b style={{ fontSize: "20px" }}>{simStats.mean.toFixed(2)}</b>
+            平均數 <b style={{ fontSize: "20px" }}>{simStats.mean.toFixed(2)}</b>
           </span>
-
           <span>
-            標準差{" "}
-            <b style={{ fontSize: "20px" }}>{simStats.sd.toFixed(2)}</b>
+            標準差 <b style={{ fontSize: "20px" }}>{simStats.sd.toFixed(2)}</b>
           </span>
-
           <span>
             總人數{" "}
             <b style={{ fontSize: "20px" }}>
@@ -806,18 +816,28 @@ function OverlayHistogramCard({
             const simRawBarWidth = Math.max(slotWidth * 0.6, 3);
             const simFilteredBarWidth = Math.max(slotWidth * 0.36, 2);
 
-            const xParent = baseX + index * slotWidth + (slotWidth - parentBarWidth) / 2;
-            const xSimRaw = baseX + index * slotWidth + (slotWidth - simRawBarWidth) / 2;
+            const xParent =
+              baseX + index * slotWidth + (slotWidth - parentBarWidth) / 2;
+            const xSimRaw =
+              baseX + index * slotWidth + (slotWidth - simRawBarWidth) / 2;
             const xSimFiltered =
               baseX + index * slotWidth + (slotWidth - simFilteredBarWidth) / 2;
 
-            const parentHeight = (bin.parentCount / leftMaxCount) * 250;
-            const simRawHeight = (bin.simRawCount / rightMaxCount) * 250;
-            const simFilteredHeight = (bin.simFilteredCount / rightMaxCount) * 250;
+            const parentHeight = Number.isFinite(bin.parentCount)
+              ? (bin.parentCount / leftMaxCount) * 250
+              : 0;
+            const simRawHeight = Number.isFinite(bin.simRawCount)
+              ? (bin.simRawCount / rightMaxCount) * 250
+              : 0;
+            const simFilteredHeight = Number.isFinite(bin.simFilteredCount)
+              ? (bin.simFilteredCount / rightMaxCount) * 250
+              : 0;
 
-            const yParent = 310 - parentHeight;
-            const ySimRaw = 310 - simRawHeight;
-            const ySimFiltered = 310 - simFilteredHeight;
+            const yParent = Number.isFinite(parentHeight) ? 310 - parentHeight : 310;
+            const ySimRaw = Number.isFinite(simRawHeight) ? 310 - simRawHeight : 310;
+            const ySimFiltered = Number.isFinite(simFilteredHeight)
+              ? 310 - simFilteredHeight
+              : 310;
 
             return (
               <g key={index}>
@@ -996,7 +1016,24 @@ function sumDistributionCounts(rows: RowData[], field: FilterField) {
   }, 0);
 }
 
+function getNiceAxisMax(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return 5;
+  if (value <= 5) return 5;
+
+  const padded = value * 1.1;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(padded)));
+  const normalized = padded / magnitude;
+
+  let nice = 10;
+  if (normalized <= 1) nice = 1;
+  else if (normalized <= 2) nice = 2;
+  else if (normalized <= 5) nice = 5;
+
+  return nice * magnitude;
+}
+
 function buildYTicks(maxValue: number) {
+  if (!Number.isFinite(maxValue) || maxValue <= 0) return [0, 1, 2, 3, 4, 5];
   if (maxValue <= 5) return [0, 1, 2, 3, 4, 5];
 
   const roughStep = maxValue / 5;
