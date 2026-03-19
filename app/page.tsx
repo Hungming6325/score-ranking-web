@@ -1,19 +1,31 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 
 type RowData = {
   Score?: string | number;
   ID?: string;
   Department?: string;
-  Catetory?: string;
+  Category?: string;
   Chinese: number | string;
   English: number | string;
   Math: number | string;
   Professional_1: number | string;
   Professional_2: number | string;
   Total?: number | string;
+};
+
+type ConfigRow = {
+  招生系科: string;
+  招生群類別: string;
+  一般考生招生名額: string | number;
+  國文: string | number;
+  英文: string | number;
+  數學: string | number;
+  專業一: string | number;
+  專業二: string | number;
+  總級分?: string | number;
 };
 
 type FilterField =
@@ -23,9 +35,9 @@ type FilterField =
   | "Professional_1"
   | "Professional_2";
 
-type ParsedFileResult = {
+type ParsedFileResult<T> = {
   ok: boolean;
-  rows: RowData[];
+  rows: T[];
   error?: string;
 };
 
@@ -35,38 +47,6 @@ type HistogramBin = {
   simRawCount: number;
   simFilteredCount: number;
 };
-
-const departmentOptions = [
-  "林口護理系",
-  "嘉義護理系",
-  "保營系",
-  "妝品系",
-  "幼保系",
-  "呼照系",
-];
-
-const categoryOptions = [
-  "01機械群",
-  "02動力機械群",
-  "03電機與電子群電機類",
-  "04電機與電子群資電類",
-  "05化工群",
-  "06土木與建築群",
-  "07設計群",
-  "08工程與管理類",
-  "09商業與管理群",
-  "10衛生與護理類",
-  "11食品群",
-  "12家政群幼保類",
-  "13家政群生活應用類",
-  "14農業群",
-  "15外語群英語類",
-  "16外語群日語類",
-  "17餐旅群",
-  "18海事群",
-  "19水產群",
-  "20藝術群影視類",
-];
 
 const scoreFields: FilterField[] = [
   "Chinese",
@@ -85,13 +65,16 @@ const scoreFieldLabels: Record<FilterField, string> = {
 };
 
 export default function Home() {
+  const configFileInputRef = useRef<HTMLInputElement | null>(null);
   const parentFileInputRef = useRef<HTMLInputElement | null>(null);
   const simFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [configData, setConfigData] = useState<ConfigRow[]>([]);
   const [parentData, setParentData] = useState<RowData[]>([]);
   const [simData, setSimData] = useState<RowData[]>([]);
   const [result, setResult] = useState<RowData[]>([]);
 
+  const [configFileName, setConfigFileName] = useState("");
   const [parentFileName, setParentFileName] = useState("");
   const [simFileName, setSimFileName] = useState("");
 
@@ -108,13 +91,30 @@ export default function Home() {
     Professional_1: 0,
     Professional_2: 0,
   });
+const resetUploadedFiles = () => {
+    setParentData([]);
+    setSimData([]);
+    setResult([]);
+    setSteps([]);
+    setError("");
+    setParentFileName("");
+    setSimFileName("");
 
-  const parseCsvFile = (
+    if (parentFileInputRef.current) {
+      parentFileInputRef.current.value = "";
+    }
+
+    if (simFileInputRef.current) {
+      simFileInputRef.current.value = "";
+    }
+  };
+
+  const parseCsvFile = <T extends Record<string, unknown>>(
     file: File,
     requiredColumns: string[],
-    onDone: (result: ParsedFileResult) => void
+    onDone: (result: ParsedFileResult<T>) => void
   ) => {
-    Papa.parse<RowData>(file, {
+    Papa.parse<T>(file, {
       header: true,
       skipEmptyLines: true,
       complete: (res) => {
@@ -142,12 +142,6 @@ export default function Home() {
           return;
         }
 
-        rows.forEach((r) => {
-          if (r.ID !== undefined) {
-            r.ID = String(r.ID).trim();
-          }
-        });
-
         onDone({
           ok: true,
           rows,
@@ -163,6 +157,55 @@ export default function Home() {
     });
   };
 
+  const handleConfigFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setConfigFileName(file.name);
+    setError("");
+    setSteps([]);
+    setResult([]);
+
+    parseCsvFile<ConfigRow>(
+      file,
+      [
+        "招生系科",
+        "招生群類別",
+        "一般考生招生名額",
+        "國文",
+        "英文",
+        "數學",
+        "專業一",
+        "專業二",
+      ],
+      (parsed) => {
+        if (!parsed.ok) {
+          setConfigData([]);
+          setError(parsed.error || "倍率設定檔讀取失敗");
+          return;
+        }
+
+        const cleaned = parsed.rows.map((row) => ({
+          ...row,
+          招生系科: String(row.招生系科 ?? "").trim(),
+          招生群類別: String(row.招生群類別 ?? "").trim(),
+        }));
+
+        setConfigData(cleaned);
+        setSelectedDepartment("");
+        setSelectedCategory("");
+        setQuota(0);
+        setMultiplier({
+          Chinese: 0,
+          English: 0,
+          Math: 0,
+          Professional_1: 0,
+          Professional_2: 0,
+        });
+      }
+    );
+  };
+
   const handleParentFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -170,7 +213,7 @@ export default function Home() {
     setParentFileName(file.name);
     setError("");
 
-    parseCsvFile(
+    parseCsvFile<RowData>(
       file,
       ["Score", "Chinese", "English", "Math", "Professional_1", "Professional_2"],
       (parsed) => {
@@ -194,7 +237,7 @@ export default function Home() {
     setSteps([]);
     setResult([]);
 
-    parseCsvFile(
+    parseCsvFile<RowData>(
       file,
       ["ID", "Chinese", "English", "Math", "Professional_1", "Professional_2"],
       (parsed) => {
@@ -204,14 +247,60 @@ export default function Home() {
           return;
         }
 
-        setSimData(parsed.rows);
+        const cleaned = parsed.rows.map((r) => {
+          if (r.ID !== undefined) {
+            r.ID = String(r.ID).trim();
+          }
+          return r;
+        });
+
+        setSimData(cleaned);
       }
     );
   };
 
+  const departmentOptions = useMemo(() => {
+    return [...new Set(configData.map((row) => row.招生系科).filter(Boolean))];
+  }, [configData]);
+
+  const categoryOptions = useMemo(() => {
+    const rows = selectedDepartment
+      ? configData.filter((row) => row.招生系科 === selectedDepartment)
+      : configData;
+
+    return [...new Set(rows.map((row) => row.招生群類別).filter(Boolean))];
+  }, [configData, selectedDepartment]);
+
+  const selectedConfig = useMemo(() => {
+    if (!selectedDepartment || !selectedCategory) return null;
+
+    return (
+      configData.find(
+        (row) =>
+          row.招生系科 === selectedDepartment &&
+          row.招生群類別 === selectedCategory
+      ) || null
+    );
+  }, [configData, selectedDepartment, selectedCategory]);
+
+useEffect(() => {
+  setSteps([]);
+  setResult([]);
+}, [selectedDepartment, selectedCategory]);
+
   const calculate = () => {
     setError("");
     setSteps([]);
+
+    if (!selectedDepartment) {
+      setError("請先選擇招生系科");
+      return;
+    }
+
+    if (!selectedCategory) {
+      setError("請先選擇招生群類別");
+      return;
+    }
 
     if (!parentData.length) {
       setError("請先上傳全國成績檔案");
@@ -285,10 +374,7 @@ export default function Home() {
 
   const parentDisplayCount = useMemo(() => {
     if (!parentData.length) return 0;
-    const totals = scoreFields.map((field) =>
-      sumDistributionCounts(parentData, field)
-    );
-    return Math.min(...totals);
+    return sumDistributionCounts(parentData, "Chinese");
   }, [parentData]);
 
   const simDisplayCount = useMemo(() => {
@@ -325,65 +411,167 @@ export default function Home() {
           成績倍率系統
         </h1>
 
-        <h2 style={sectionTitleStyle}>招生設定</h2>
-
         <div
           style={{
-            display: "flex",
-            gap: "20px",
-            alignItems: "center",
-            flexWrap: "wrap",
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr) 420px",
+            gap: "28px",
+            alignItems: "start",
             marginBottom: "28px",
           }}
         >
           <div>
+            <div style={{ marginBottom: "20px" }}>
+              <input
+                ref={configFileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleConfigFile}
+                style={{ display: "none" }}
+              />
+
+              <button
+                onClick={() => configFileInputRef.current?.click()}
+                style={buttonStyle}
+              >
+                上傳倍率設定檔
+              </button>
+
+              <span
+                style={{
+                  fontSize: "28px",
+                  color: "#1f2937",
+                  marginLeft: "20px",
+                }}
+              >
+                {configFileName || "尚未選擇檔案"}
+              </span>
+            </div>
+
             <div
               style={{
-                fontSize: "22px",
-                color: "#374151",
-                marginBottom: "8px",
-                fontWeight: 600,
+                display: "flex",
+                gap: "20px",
+                alignItems: "center",
+                flexWrap: "wrap",
               }}
             >
-              招生系科
+              <div>
+                <div
+                  style={{
+                    fontSize: "22px",
+                    color: "#374151",
+                    marginBottom: "8px",
+                    fontWeight: 600,
+                  }}
+                >
+                  招生系科
+                </div>
+                <select
+                  value={selectedDepartment}
+                 onChange={(e) => {
+                 const newDepartment = e.target.value;
+                  if (newDepartment !== selectedDepartment) {
+             setSelectedDepartment(newDepartment);
+    setSelectedCategory("");
+    resetUploadedFiles();
+  }
+}}
+                  style={selectStyle}
+                  disabled={!configData.length}
+                >
+                  <option value="">請選擇系科</option>
+                  {departmentOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: "22px",
+                    color: "#374151",
+                    marginBottom: "8px",
+                    fontWeight: 600,
+                  }}
+                >
+                  招生群類別
+                </div>
+                <select
+                  value={selectedCategory}
+onChange={(e) => {
+  const newCategory = e.target.value;
+  if (newCategory !== selectedCategory) {
+    setSelectedCategory(newCategory);
+    resetUploadedFiles();
+  }
+}}
+                  style={selectStyle}
+                  disabled={!selectedDepartment}
+                >
+                  <option value="">請選擇群類別</option>
+                  {categoryOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              style={selectStyle}
-            >
-              <option value="">請選擇系科</option>
-              {departmentOptions.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
           </div>
 
-          <div>
+          <div
+            style={{
+              background: "#f8fafc",
+              border: "1px solid #dbe3ef",
+              borderRadius: "16px",
+              padding: "20px 24px",
+              minHeight: "188px",
+            }}
+          >
             <div
               style={{
-                fontSize: "22px",
-                color: "#374151",
-                marginBottom: "8px",
-                fontWeight: 600,
+                fontSize: "24px",
+                fontWeight: 700,
+                color: "#111827",
+                marginBottom: "16px",
               }}
             >
-              招生群類別
+              自動帶入資訊
             </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              style={selectStyle}
-            >
-              <option value="">請選擇群類別</option>
-              {categoryOptions.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
+
+            {selectedConfig ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px 20px",
+                  fontSize: "20px",
+                  color: "#374151",
+                }}
+              >
+                <div>
+                  招生人數：
+                  {toMultiplierNumber(selectedConfig["一般考生招生名額"])}
+                </div>
+                <div>國文倍率：{toMultiplierNumber(selectedConfig["國文"])}</div>
+                <div>英文倍率：{toMultiplierNumber(selectedConfig["英文"])}</div>
+                <div>數學倍率：{toMultiplierNumber(selectedConfig["數學"])}</div>
+                <div>
+                  專業一倍率：{toMultiplierNumber(selectedConfig["專業一"])}
+                </div>
+                <div>
+                  專業二倍率：{toMultiplierNumber(selectedConfig["專業二"])}
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: "18px", color: "#6b7280" }}>
+                請先上傳倍率設定檔，並選擇系科與群類別
+              </div>
+            )}
           </div>
         </div>
 
@@ -519,40 +707,42 @@ export default function Home() {
                 flexWrap: "wrap",
               }}
             >
-              {(["Professional_1", "Professional_2"] as FilterField[]).map((field) => (
-                <div
-                  key={field}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}
-                >
-                  <label
+              {(["Professional_1", "Professional_2"] as FilterField[]).map(
+                (field) => (
+                  <div
+                    key={field}
                     style={{
-                      fontSize: "28px",
-                      color: "#374151",
-                      fontWeight: 600,
-                      width: "90px",
-                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
                     }}
                   >
-                    {scoreFieldLabels[field]}
-                  </label>
+                    <label
+                      style={{
+                        fontSize: "28px",
+                        color: "#374151",
+                        fontWeight: 600,
+                        width: "90px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {scoreFieldLabels[field]}
+                    </label>
 
-                  <input
-                    type="number"
-                    value={multiplier[field]}
-                    onChange={(e) =>
-                      setMultiplier({
-                        ...multiplier,
-                        [field]: Number(e.target.value),
-                      })
-                    }
-                    style={inputStyle}
-                  />
-                </div>
-              ))}
+                    <input
+                      type="number"
+                      value={multiplier[field]}
+                      onChange={(e) =>
+                        setMultiplier({
+                          ...multiplier,
+                          [field]: Number(e.target.value),
+                        })
+                      }
+                      style={inputStyle}
+                    />
+                  </div>
+                )
+              )}
             </div>
           </div>
         </div>
@@ -634,6 +824,7 @@ export default function Home() {
         >
           <div>全國人數：{parentDisplayCount.toLocaleString()}</div>
           <div>模擬人數：{simDisplayCount.toLocaleString()}</div>
+          <div>篩選後人數：{result.length.toLocaleString()}</div>
         </div>
 
         <div
@@ -1064,6 +1255,14 @@ function buildYTicks(maxValue: number) {
   }
 
   return ticks;
+}
+
+function toMultiplierNumber(value: unknown): number {
+  const text = String(value ?? "").trim();
+  if (!text || text === "--") return 0;
+
+  const n = Number(text);
+  return Number.isFinite(n) ? n : 0;
 }
 
 const sectionTitleStyle: React.CSSProperties = {
