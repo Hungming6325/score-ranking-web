@@ -75,6 +75,7 @@ const scoreFields: FilterField[] = [
   "Professional_1",
   "Professional_2",
 ];
+
 const scoreFieldLabels: Record<FilterField, string> = {
   Chinese: "國文",
   English: "英文",
@@ -263,12 +264,18 @@ export default function Home() {
             0
           ),
         }))
-        .sort((a, b) => Number((b as RowData & { __groupScore: number }).__groupScore) - Number((a as RowData & { __groupScore: number }).__groupScore))
+        .sort(
+          (a, b) =>
+            Number((b as RowData & { __groupScore: number }).__groupScore) -
+            Number((a as RowData & { __groupScore: number }).__groupScore)
+        )
         .slice(0, limit)
         .map(({ __groupScore, ...rest }) => rest as RowData);
 
       processSteps.push(
-        `倍率 ${group.times}：${group.fields.join(" + ")} 加總篩選 → 保留前 ${limit} 人，目前剩 ${workingList.length} 人`
+        `倍率 ${group.times}：${group.fields
+          .map((field) => scoreFieldLabels[field])
+          .join(" + ")} 加總篩選 → 保留前 ${limit} 人，目前剩 ${workingList.length} 人`
       );
     }
 
@@ -440,117 +447,116 @@ export default function Home() {
           />
         </div>
 
-<h2 style={sectionTitleStyle}>篩選倍率</h2>
-<div
-  style={{
-    background: "#f8fafc",
-    border: "1px solid #dbe3ef",
-    borderRadius: "16px",
-    padding: "20px 24px",
-    marginBottom: "28px",
-    maxWidth: "980px",
-  }}
->
- <div
-  style={{
-    display: "flex",
-    flexDirection: "column",
-    gap: "18px",
-  }}
->
-  {/* 第一列：國文 英文 數學 */}
-  <div
-    style={{
-      display: "flex",
-      gap: "40px",
-      alignItems: "center",
-      justifyContent: "center",
-      flexWrap: "wrap",
-    }}
-  >
-    {(["Chinese", "English", "Math"] as FilterField[]).map((field) => (
-      <div
-        key={field}
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: "12px",
-        }}
-      >
-        <label
+        <h2 style={sectionTitleStyle}>篩選倍率</h2>
+        <div
           style={{
-            fontSize: "28px",
-            color: "#374151",
-            fontWeight: 600,
-            width: "90px",
-            flexShrink: 0,
+            background: "#f8fafc",
+            border: "1px solid #dbe3ef",
+            borderRadius: "16px",
+            padding: "20px 24px",
+            marginBottom: "28px",
+            maxWidth: "980px",
           }}
         >
-          {scoreFieldLabels[field]}
-        </label>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "18px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "40px",
+                alignItems: "center",
+                justifyContent: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              {(["Chinese", "English", "Math"] as FilterField[]).map((field) => (
+                <div
+                  key={field}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: "28px",
+                      color: "#374151",
+                      fontWeight: 600,
+                      width: "90px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {scoreFieldLabels[field]}
+                  </label>
 
-        <input
-          type="number"
-          value={multiplier[field]}
-          onChange={(e) =>
-            setMultiplier({
-              ...multiplier,
-              [field]: Number(e.target.value),
-            })
-          }
-          style={inputStyle}
-        />
-      </div>
-    ))}
-  </div>
+                  <input
+                    type="number"
+                    value={multiplier[field]}
+                    onChange={(e) =>
+                      setMultiplier({
+                        ...multiplier,
+                        [field]: Number(e.target.value),
+                      })
+                    }
+                    style={inputStyle}
+                  />
+                </div>
+              ))}
+            </div>
 
-  {/* 第二列：專業一 專業二 */}
-  <div
-    style={{
-      display: "flex",
-      gap: "40px",
-      alignItems: "center",
-      justifyContent: "flex-start",
-      flexWrap: "wrap",
-    }}
-  >
-    {(["Professional_1", "Professional_2"] as FilterField[]).map((field) => (
-      <div
-        key={field}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-        }}
-      >
-        <label
-          style={{
-            fontSize: "28px",
-            color: "#374151",
-            fontWeight: 600,
-            width: "90px",
-            flexShrink: 0,
-          }}
-        >
-          {scoreFieldLabels[field]}
-        </label>
+            <div
+              style={{
+                display: "flex",
+                gap: "40px",
+                alignItems: "center",
+                justifyContent: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              {(["Professional_1", "Professional_2"] as FilterField[]).map((field) => (
+                <div
+                  key={field}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: "28px",
+                      color: "#374151",
+                      fontWeight: 600,
+                      width: "90px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {scoreFieldLabels[field]}
+                  </label>
 
-        <input
-          type="number"
-          value={multiplier[field]}
-          onChange={(e) =>
-            setMultiplier({
-              ...multiplier,
-              [field]: Number(e.target.value),
-            })
-          }
-          style={inputStyle}
-        />
-      </div>
-    ))}
-  </div>
-</div>
-</div>
+                  <input
+                    type="number"
+                    value={multiplier[field]}
+                    onChange={(e) =>
+                      setMultiplier({
+                        ...multiplier,
+                        [field]: Number(e.target.value),
+                      })
+                    }
+                    style={inputStyle}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <button onClick={calculate} style={runButtonStyle}>
           執行
         </button>
@@ -626,8 +632,8 @@ export default function Home() {
             color: "#374151",
           }}
         >
-          <div>全國人數：{parentDisplayCount}</div>
-          <div>模擬人數：{simDisplayCount}</div>
+          <div>全國人數：{parentDisplayCount.toLocaleString()}</div>
+          <div>模擬人數：{simDisplayCount.toLocaleString()}</div>
         </div>
 
         <div
@@ -708,7 +714,7 @@ function OverlayHistogramCard({
   );
 
   const parentStats = computeParentStats(parentRows, field);
-  const simStats = computeParentStats(simRawRows, field);
+  const simStats = computeSimStats(simRawRows, field);
 
   return (
     <div
@@ -731,72 +737,75 @@ function OverlayHistogramCard({
         {title}成績分布
       </h3>
 
-<div
-  style={{
-    textAlign: "center",
-    fontSize: "15px",
-    marginBottom: "12px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  }}
->
-  {/* 全國 */}
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "120px 1fr 1fr 1fr",
-      alignItems: "center",
-      justifyContent: "center",
-      columnGap: "16px",
-    }}
-  >
-    <span style={{ color: "#6b7280", textAlign: "right" }}>全國</span>
+      <div
+        style={{
+          textAlign: "center",
+          fontSize: "15px",
+          marginBottom: "12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "6px",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "120px 1fr 1fr 1fr",
+            alignItems: "center",
+            justifyContent: "center",
+            columnGap: "16px",
+          }}
+        >
+          <span style={{ color: "#6b7280", textAlign: "right" }}>全國</span>
 
-    <div>
-      <span style={{ color: "#9ca3af" }}>平均數 </span>
-      <span style={{ fontWeight: 600 }}>{parentStats.mean.toFixed(2)}</span>
-    </div>
+          <div>
+            <span style={{ color: "#9ca3af" }}>平均數 </span>
+            <span style={{ fontWeight: 600 }}>{parentStats.mean.toFixed(2)}</span>
+          </div>
 
-    <div>
-      <span style={{ color: "#9ca3af" }}>標準差 </span>
-      <span style={{ fontWeight: 600 }}>{parentStats.sd.toFixed(2)}</span>
-    </div>
+          <div>
+            <span style={{ color: "#9ca3af" }}>標準差 </span>
+            <span style={{ fontWeight: 600 }}>{parentStats.sd.toFixed(2)}</span>
+          </div>
 
-    <div>
-      <span style={{ color: "#9ca3af" }}>總人數 </span>
-      <span style={{ fontWeight: 600 }}>{parentStats.total.toLocaleString()}</span>
-    </div>
-  </div>
+          <div>
+            <span style={{ color: "#9ca3af" }}>總人數 </span>
+            <span style={{ fontWeight: 600 }}>
+              {parentStats.total.toLocaleString()}
+            </span>
+          </div>
+        </div>
 
-  {/* 模擬 */}
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "120px 1fr 1fr 1fr",
-      alignItems: "center",
-      justifyContent: "center",
-      columnGap: "16px",
-    }}
-  >
-    <span style={{ color: "#9ca3af", textAlign: "right" }}>模擬</span>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "120px 1fr 1fr 1fr",
+            alignItems: "center",
+            justifyContent: "center",
+            columnGap: "16px",
+          }}
+        >
+          <span style={{ color: "#9ca3af", textAlign: "right" }}>模擬</span>
 
-    <div>
-      <span style={{ color: "#9ca3af" }}>平均數 </span>
-      <span style={{ fontWeight: 600 }}>{simStats.mean.toFixed(2)}</span>
-    </div>
+          <div>
+            <span style={{ color: "#9ca3af" }}>平均數 </span>
+            <span style={{ fontWeight: 600 }}>{simStats.mean.toFixed(2)}</span>
+          </div>
 
-    <div>
-      <span style={{ color: "#9ca3af" }}>標準差 </span>
-      <span style={{ fontWeight: 600 }}>{simStats.sd.toFixed(2)}</span>
-    </div>
+          <div>
+            <span style={{ color: "#9ca3af" }}>標準差 </span>
+            <span style={{ fontWeight: 600 }}>{simStats.sd.toFixed(2)}</span>
+          </div>
 
-    <div>
-      <span style={{ color: "#9ca3af" }}>總人數 </span>
-      <span style={{ fontWeight: 600 }}>{simStats.total.toLocaleString()}</span>
-    </div>
-  </div>
-</div>
+          <div>
+            <span style={{ color: "#9ca3af" }}>總人數 </span>
+            <span style={{ fontWeight: 600 }}>
+              {simStats.total.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {bins.length === 0 ? (
         <div style={{ color: "#6b7280", fontSize: "18px" }}>尚無資料</div>
       ) : (
@@ -991,6 +1000,26 @@ function computeParentStats(rows: RowData[], field: FilterField) {
   });
 
   const variance = total > 0 ? weightedVarSum / total : 0;
+  const sd = Math.sqrt(variance);
+
+  return { total, mean, sd };
+}
+
+function computeSimStats(rows: RowData[], field: FilterField) {
+  const values = rows
+    .map((row) => Number(row[field] || 0))
+    .filter((score) => Number.isFinite(score));
+
+  const total = values.length;
+  if (total === 0) {
+    return { total: 0, mean: 0, sd: 0 };
+  }
+
+  const mean = values.reduce((sum, score) => sum + score, 0) / total;
+
+  const variance =
+    values.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / total;
+
   const sd = Math.sqrt(variance);
 
   return { total, mean, sd };
