@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 
 type RowData = {
@@ -91,7 +91,8 @@ export default function Home() {
     Professional_1: 0,
     Professional_2: 0,
   });
-const resetUploadedFiles = () => {
+
+  const resetUploadedFiles = () => {
     setParentData([]);
     setSimData([]);
     setResult([]);
@@ -194,14 +195,7 @@ const resetUploadedFiles = () => {
         setConfigData(cleaned);
         setSelectedDepartment("");
         setSelectedCategory("");
-        setQuota(0);
-        setMultiplier({
-          Chinese: 0,
-          English: 0,
-          Math: 0,
-          Professional_1: 0,
-          Professional_2: 0,
-        });
+        resetUploadedFiles();
       }
     );
   };
@@ -282,11 +276,6 @@ const resetUploadedFiles = () => {
       ) || null
     );
   }, [configData, selectedDepartment, selectedCategory]);
-
-useEffect(() => {
-  setSteps([]);
-  setResult([]);
-}, [selectedDepartment, selectedCategory]);
 
   const calculate = () => {
     setError("");
@@ -382,486 +371,261 @@ useEffect(() => {
   }, [simData]);
 
   return (
-    <main
-      style={{
-        padding: "32px",
-        fontFamily: "Arial, sans-serif",
-        background: "#f7f8fb",
-        minHeight: "100vh",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "1500px",
-          margin: "0 auto",
-          background: "#ffffff",
-          borderRadius: "20px",
-          padding: "32px",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "56px",
-            marginBottom: "28px",
-            fontWeight: 700,
-            color: "#1f2937",
-          }}
-        >
-          成績倍率系統
-        </h1>
+    <main style={pageStyle}>
+      <div style={shellStyle}>
+        <header style={headerStyle}>
+          <h1 style={titleStyle}>甄選入學成績倍率篩選系統</h1>
+        </header>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) 420px",
-            gap: "28px",
-            alignItems: "start",
-            marginBottom: "28px",
-          }}
-        >
-          <div>
-            <div style={{ marginBottom: "20px" }}>
-              <input
-                ref={configFileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleConfigFile}
-                style={{ display: "none" }}
-              />
+        <div style={stepBarStyle}>
+          <StepPill index={1} label="上傳倍率設定檔" />
+          <StepArrow />
+          <StepPill index={2} label="選擇系科與群類別" />
+          <StepArrow />
+          <StepPill index={3} label="上傳成績檔" />
+          <StepArrow />
+          <StepPill index={4} label="設定模擬倍率" />
+          <StepArrow />
+          <StepPill index={5} label="執行與查看結果" />
+        </div>
 
-              <button
-                onClick={() => configFileInputRef.current?.click()}
-                style={buttonStyle}
-              >
-                上傳倍率設定檔
+        <div style={contentGridStyle}>
+          <section style={leftColumnStyle}>
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>設定來源資料</div>
+
+              <div style={{ marginBottom: 24 }}>
+                <input
+                  ref={configFileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleConfigFile}
+                  style={{ display: "none" }}
+                />
+                <div style={fileRowStyle}>
+                  <button
+                    onClick={() => configFileInputRef.current?.click()}
+                    style={secondaryButtonStyle}
+                  >
+                    上傳倍率設定檔
+                  </button>
+                  <div style={fileNameStyle}>
+                    {configFileName || "尚未選擇檔案"}
+                  </div>
+                </div>
+              </div>
+
+              <div style={twoColGridStyle}>
+                <div>
+                  <div style={fieldLabelStyle}>招生系科</div>
+                  <select
+                    value={selectedDepartment}
+                    onChange={(e) => {
+                      const newDepartment = e.target.value;
+                      if (newDepartment !== selectedDepartment) {
+                        setSelectedDepartment(newDepartment);
+                        setSelectedCategory("");
+                        resetUploadedFiles();
+                      }
+                    }}
+                    style={selectStyle}
+                    disabled={!configData.length}
+                  >
+                    <option value="">請選擇系科</option>
+                    {departmentOptions.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div style={fieldLabelStyle}>招生群類別</div>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => {
+                      const newCategory = e.target.value;
+                      if (newCategory !== selectedCategory) {
+                        setSelectedCategory(newCategory);
+                        resetUploadedFiles();
+                      }
+                    }}
+                    style={selectStyle}
+                    disabled={!selectedDepartment}
+                  >
+                    <option value="">請選擇群類別</option>
+                    {categoryOptions.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 28 }}>
+                <div style={fileRowStyle}>
+                  <input
+                    ref={parentFileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleParentFile}
+                    style={{ display: "none" }}
+                  />
+                  <button
+                    onClick={() => parentFileInputRef.current?.click()}
+                    style={outlineButtonStyle}
+                  >
+                    選擇全國成績檔案
+                  </button>
+                  <div style={fileNameStyle}>{parentFileName || "尚未選擇檔案"}</div>
+                </div>
+
+                <div style={{ ...fileRowStyle, marginTop: 16 }}>
+                  <input
+                    ref={simFileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleSimFile}
+                    style={{ display: "none" }}
+                  />
+                  <button
+                    onClick={() => simFileInputRef.current?.click()}
+                    style={outlineButtonStyle}
+                  >
+                    選擇模擬檔案
+                  </button>
+                  <div style={fileNameStyle}>{simFileName || "尚未選擇檔案"}</div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 28 }}>
+                <div style={sectionLabelStyle}>招生名額</div>
+                <input
+                  type="number"
+                  min={0}
+                  value={quota}
+                  onChange={(e) => setQuota(Number(e.target.value))}
+                  style={smallInputStyle}
+                />
+              </div>
+
+              <div style={{ marginTop: 28 }}>
+                <div style={sectionLabelStyle}>篩選倍率</div>
+                <div style={ratioPanelStyle}>
+                  <div style={ratioGridStyle}>
+                    {scoreFields.map((field) => (
+                      <div key={field} style={ratioItemStyle}>
+                        <label style={ratioLabelStyle}>{scoreFieldLabels[field]}</label>
+                        <input
+                          type="number"
+                          value={multiplier[field]}
+                          onChange={(e) =>
+                            setMultiplier({
+                              ...multiplier,
+                              [field]: Number(e.target.value),
+                            })
+                          }
+                          style={ratioInputStyle}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={calculate} style={primaryButtonStyle}>
+                執行
               </button>
 
-              <span
-                style={{
-                  fontSize: "28px",
-                  color: "#1f2937",
-                  marginLeft: "20px",
-                }}
-              >
-                {configFileName || "尚未選擇檔案"}
-              </span>
+              {error && <div style={errorStyle}>{error}</div>}
             </div>
+          </section>
 
-            <div
-              style={{
-                display: "flex",
-                gap: "20px",
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: "22px",
-                    color: "#374151",
-                    marginBottom: "8px",
-                    fontWeight: 600,
-                  }}
-                >
-                  招生系科
+          <section style={rightColumnStyle}>
+            <div style={infoCardStyle}>
+              <div style={infoCardHeaderStyle}>自動帶入資訊</div>
+              {selectedConfig ? (
+                <div style={infoGridStyle}>
+                  <div>招生人數：{toMultiplierNumber(selectedConfig["一般考生招生名額"])}</div>
+                  <div>國文倍率：{toMultiplierNumber(selectedConfig["國文"])}</div>
+                  <div>英文倍率：{toMultiplierNumber(selectedConfig["英文"])}</div>
+                  <div>數學倍率：{toMultiplierNumber(selectedConfig["數學"])}</div>
+                  <div>專業一倍率：{toMultiplierNumber(selectedConfig["專業一"])}</div>
+                  <div>專業二倍率：{toMultiplierNumber(selectedConfig["專業二"])}</div>
                 </div>
-                <select
-                  value={selectedDepartment}
-                 onChange={(e) => {
-                 const newDepartment = e.target.value;
-                  if (newDepartment !== selectedDepartment) {
-             setSelectedDepartment(newDepartment);
-    setSelectedCategory("");
-    resetUploadedFiles();
-  }
-}}
-                  style={selectStyle}
-                  disabled={!configData.length}
-                >
-                  <option value="">請選擇系科</option>
-                  {departmentOptions.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    fontSize: "22px",
-                    color: "#374151",
-                    marginBottom: "8px",
-                    fontWeight: 600,
-                  }}
-                >
-                  招生群類別
+              ) : (
+                <div style={emptyHintStyle}>
+                  請先上傳倍率設定檔，並選擇系科與群類別
                 </div>
-                <select
-                  value={selectedCategory}
-onChange={(e) => {
-  const newCategory = e.target.value;
-  if (newCategory !== selectedCategory) {
-    setSelectedCategory(newCategory);
-    resetUploadedFiles();
-  }
-}}
-                  style={selectStyle}
-                  disabled={!selectedDepartment}
-                >
-                  <option value="">請選擇群類別</option>
-                  {categoryOptions.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div
-            style={{
-              background: "#f8fafc",
-              border: "1px solid #dbe3ef",
-              borderRadius: "16px",
-              padding: "20px 24px",
-              minHeight: "188px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "24px",
-                fontWeight: 700,
-                color: "#111827",
-                marginBottom: "16px",
-              }}
-            >
-              自動帶入資訊
-            </div>
-
-            {selectedConfig ? (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "12px 20px",
-                  fontSize: "20px",
-                  color: "#374151",
-                }}
-              >
-                <div>
-                  招生人數：
-                  {toMultiplierNumber(selectedConfig["一般考生招生名額"])}
-                </div>
-                <div>國文倍率：{toMultiplierNumber(selectedConfig["國文"])}</div>
-                <div>英文倍率：{toMultiplierNumber(selectedConfig["英文"])}</div>
-                <div>數學倍率：{toMultiplierNumber(selectedConfig["數學"])}</div>
-                <div>
-                  專業一倍率：{toMultiplierNumber(selectedConfig["專業一"])}
-                </div>
-                <div>
-                  專業二倍率：{toMultiplierNumber(selectedConfig["專業二"])}
-                </div>
-              </div>
-            ) : (
-              <div style={{ fontSize: "18px", color: "#6b7280" }}>
-                請先上傳倍率設定檔，並選擇系科與群類別
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div
-          style={{
-            marginTop: "20px",
-            marginBottom: "28px",
-            display: "flex",
-            alignItems: "center",
-            gap: "24px",
-            flexWrap: "wrap",
-          }}
-        >
-          <input
-            ref={parentFileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleParentFile}
-            style={{ display: "none" }}
-          />
-
-          <button
-            onClick={() => parentFileInputRef.current?.click()}
-            style={buttonStyle}
-          >
-            選擇全國成績檔案
-          </button>
-
-          <span style={{ fontSize: "28px", color: "#1f2937", marginRight: "16px" }}>
-            {parentFileName || "尚未選擇檔案"}
-          </span>
-
-          <input
-            ref={simFileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleSimFile}
-            style={{ display: "none" }}
-          />
-
-          <button
-            onClick={() => simFileInputRef.current?.click()}
-            style={buttonStyle}
-          >
-            選擇模擬檔案
-          </button>
-
-          <span style={{ fontSize: "28px", color: "#1f2937" }}>
-            {simFileName || "尚未選擇檔案"}
-          </span>
-        </div>
-
-        <h2 style={sectionTitleStyle}>招生名額</h2>
-        <div style={{ marginBottom: "28px" }}>
-          <input
-            type="number"
-            min={0}
-            value={quota}
-            onChange={(e) => setQuota(Number(e.target.value))}
-            style={inputStyle}
-          />
-        </div>
-
-        <h2 style={sectionTitleStyle}>篩選倍率</h2>
-        <div
-          style={{
-            background: "#f8fafc",
-            border: "1px solid #dbe3ef",
-            borderRadius: "16px",
-            padding: "20px 24px",
-            marginBottom: "28px",
-            maxWidth: "980px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "18px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                gap: "40px",
-                alignItems: "center",
-                justifyContent: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              {(["Chinese", "English", "Math"] as FilterField[]).map((field) => (
-                <div
-                  key={field}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      fontSize: "28px",
-                      color: "#374151",
-                      fontWeight: 600,
-                      width: "90px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {scoreFieldLabels[field]}
-                  </label>
-
-                  <input
-                    type="number"
-                    value={multiplier[field]}
-                    onChange={(e) =>
-                      setMultiplier({
-                        ...multiplier,
-                        [field]: Number(e.target.value),
-                      })
-                    }
-                    style={inputStyle}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                gap: "40px",
-                alignItems: "center",
-                justifyContent: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              {(["Professional_1", "Professional_2"] as FilterField[]).map(
-                (field) => (
-                  <div
-                    key={field}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                    }}
-                  >
-                    <label
-                      style={{
-                        fontSize: "28px",
-                        color: "#374151",
-                        fontWeight: 600,
-                        width: "90px",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {scoreFieldLabels[field]}
-                    </label>
-
-                    <input
-                      type="number"
-                      value={multiplier[field]}
-                      onChange={(e) =>
-                        setMultiplier({
-                          ...multiplier,
-                          [field]: Number(e.target.value),
-                        })
-                      }
-                      style={inputStyle}
-                    />
-                  </div>
-                )
               )}
             </div>
-          </div>
-        </div>
 
-        <button onClick={calculate} style={runButtonStyle}>
-          執行
-        </button>
+            <div style={{ ...cardStyle, marginTop: 20 }}>
+              <div style={cardHeaderStyle}>篩選流程與結果</div>
 
-        {error && (
-          <div
-            style={{
-              marginTop: "20px",
-              color: "#b91c1c",
-              background: "#fee2e2",
-              border: "1px solid #fecaca",
-              padding: "14px 16px",
-              borderRadius: "10px",
-              fontSize: "20px",
-            }}
-          >
-            {error}
-          </div>
-        )}
+              <div style={summaryRowStyle}>
+                <SummaryBox label="全國人數" value={parentDisplayCount} />
+                <SummaryBox label="模擬人數" value={simDisplayCount} />
+                <SummaryBox label="篩選後人數" value={result.length} />
+              </div>
 
-        {steps.length > 0 && (
-          <>
-            <h2 style={{ ...sectionTitleStyle, marginTop: "36px" }}>篩選流程</h2>
-            <div
-              style={{
-                background: "#f3f4f6",
-                border: "1px solid #d1d5db",
-                borderRadius: "12px",
-                padding: "16px",
-                marginBottom: "28px",
-              }}
-            >
-              {steps.map((step, index) => (
-                <div
-                  key={index}
-                  style={{
-                    fontSize: "20px",
-                    color: "#111827",
-                    marginBottom: index === steps.length - 1 ? 0 : "10px",
-                  }}
-                >
-                  {index + 1}. {step}
+              {steps.length > 0 && (
+                <div style={stepsBoxStyle}>
+                  {steps.map((step, index) => (
+                    <div key={index} style={stepTextStyle}>
+                      {index + 1}. {step}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              <div style={legendRowStyle}>
+                <LegendBox color="#7cc7ee" label="全國成績分布" />
+                <LegendBox color="rgba(250, 204, 21, 0.65)" label="未篩選模擬成績分布" />
+                <LegendBox color="rgba(37, 99, 235, 0.82)" label="篩選後成績分布" />
+              </div>
+
+              <div style={chartGridStyle}>
+                {scoreFields.map((field) => (
+                  <OverlayHistogramCard
+                    key={field}
+                    title={scoreFieldLabels[field]}
+                    parentRows={parentData}
+                    simRawRows={simData}
+                    simFilteredRows={result}
+                    field={field}
+                  />
+                ))}
+              </div>
             </div>
-          </>
-        )}
-
-        <h2 style={sectionTitleStyle}>結果</h2>
-        <div
-          style={{
-            display: "flex",
-            gap: "32px",
-            alignItems: "center",
-            flexWrap: "wrap",
-            marginBottom: "8px",
-            fontSize: "22px",
-            color: "#374151",
-          }}
-        >
-          <div>系科：{selectedDepartment || "未選擇"}</div>
-          <div>群類別：{selectedCategory || "未選擇"}</div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: "32px",
-            alignItems: "center",
-            flexWrap: "wrap",
-            marginBottom: "20px",
-            fontSize: "22px",
-            color: "#374151",
-          }}
-        >
-          <div>全國人數：{parentDisplayCount.toLocaleString()}</div>
-          <div>模擬人數：{simDisplayCount.toLocaleString()}</div>
-          <div>篩選後人數：{result.length.toLocaleString()}</div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: "24px",
-            alignItems: "center",
-            marginBottom: "20px",
-            flexWrap: "wrap",
-            fontSize: "18px",
-          }}
-        >
-          <LegendBox color="#8bb8ea" label="全國成績分布" />
-          <LegendBox color="rgba(251, 191, 36, 0.65)" label="未篩選模擬成績分布" />
-          <LegendBox color="rgba(45, 92, 184, 0.85)" label="篩選後成績分布" />
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(560px, 1fr))",
-            gap: "24px",
-          }}
-        >
-          {scoreFields.map((field) => (
-            <OverlayHistogramCard
-              key={field}
-              title={scoreFieldLabels[field]}
-              parentRows={parentData}
-              simRawRows={simData}
-              simFilteredRows={result}
-              field={field}
-            />
-          ))}
+          </section>
         </div>
       </div>
     </main>
+  );
+}
+
+function StepPill({ index, label }: { index: number; label: string }) {
+  return (
+    <div style={stepPillStyle}>
+      <span style={stepIndexStyle}>{index}</span>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function StepArrow() {
+  return <div style={stepArrowStyle}>›</div>;
+}
+
+function SummaryBox({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={summaryBoxStyle}>
+      <div style={summaryLabelStyle}>{label}</div>
+      <div style={summaryValueStyle}>{value.toLocaleString()}</div>
+    </div>
   );
 }
 
@@ -874,8 +638,8 @@ function LegendBox({ color, label }: { color: string; label: string }) {
           width: "24px",
           height: "14px",
           background: color,
-          borderRadius: "4px",
-          border: "1px solid #94a3b8",
+          borderRadius: "999px",
+          border: "1px solid rgba(148, 163, 184, 0.8)",
         }}
       />
       <span>{label}</span>
@@ -908,101 +672,33 @@ function OverlayHistogramCard({
   const simStats = computeSimStats(simRawRows, field);
 
   return (
-    <div
-      style={{
-        border: "1px solid #d1d5db",
-        borderRadius: "16px",
-        padding: "20px",
-        background: "#ffffff",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-      }}
-    >
-      <h3
-        style={{
-          fontSize: "28px",
-          marginBottom: "8px",
-          color: "#111827",
-          textAlign: "center",
-        }}
-      >
-        {title}成績分布
-      </h3>
+    <div style={chartCardStyle}>
+      <h3 style={chartTitleStyle}>{title}成績分布</h3>
 
-      <div
-        style={{
-          textAlign: "center",
-          fontSize: "15px",
-          marginBottom: "12px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "6px",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "120px 1fr 1fr 1fr",
-            alignItems: "center",
-            justifyContent: "center",
-            columnGap: "16px",
-          }}
-        >
-          <span style={{ color: "#6b7280", textAlign: "right" }}>全國</span>
-
-          <div>
-            <span style={{ color: "#9ca3af" }}>平均數 </span>
-            <span style={{ fontWeight: 600 }}>{parentStats.mean.toFixed(2)}</span>
-          </div>
-
-          <div>
-            <span style={{ color: "#9ca3af" }}>標準差 </span>
-            <span style={{ fontWeight: 600 }}>{parentStats.sd.toFixed(2)}</span>
-          </div>
-
-          <div>
-            <span style={{ color: "#9ca3af" }}>總人數 </span>
-            <span style={{ fontWeight: 600 }}>
-              {parentStats.total.toLocaleString()}
-            </span>
-          </div>
+      <div style={chartStatsWrapStyle}>
+        <div style={chartStatsRowStyle}>
+          <span style={statsTagStyle}>全國</span>
+          <span>平均數 <b>{parentStats.mean.toFixed(2)}</b></span>
+          <span>標準差 <b>{parentStats.sd.toFixed(2)}</b></span>
+          <span>總人數 <b>{parentStats.total.toLocaleString()}</b></span>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "120px 1fr 1fr 1fr",
-            alignItems: "center",
-            justifyContent: "center",
-            columnGap: "16px",
-          }}
-        >
-          <span style={{ color: "#9ca3af", textAlign: "right" }}>模擬</span>
-
-          <div>
-            <span style={{ color: "#9ca3af" }}>平均數 </span>
-            <span style={{ fontWeight: 600 }}>{simStats.mean.toFixed(2)}</span>
-          </div>
-
-          <div>
-            <span style={{ color: "#9ca3af" }}>標準差 </span>
-            <span style={{ fontWeight: 600 }}>{simStats.sd.toFixed(2)}</span>
-          </div>
-
-          <div>
-            <span style={{ color: "#9ca3af" }}>總人數 </span>
-            <span style={{ fontWeight: 600 }}>
-              {simStats.total.toLocaleString()}
-            </span>
-          </div>
+        <div style={chartStatsRowStyle}>
+          <span style={{ ...statsTagStyle, background: "#f8fafc", color: "#64748b" }}>
+            模擬
+          </span>
+          <span>平均數 <b>{simStats.mean.toFixed(2)}</b></span>
+          <span>標準差 <b>{simStats.sd.toFixed(2)}</b></span>
+          <span>總人數 <b>{simStats.total.toLocaleString()}</b></span>
         </div>
       </div>
 
       {bins.length === 0 ? (
-        <div style={{ color: "#6b7280", fontSize: "18px" }}>尚無資料</div>
+        <div style={emptyChartStyle}>尚無資料</div>
       ) : (
         <svg viewBox="0 0 640 380" style={{ width: "100%", height: "auto" }}>
-          <line x1="60" y1="25" x2="60" y2="310" stroke="#111827" strokeWidth="1.5" />
-          <line x1="60" y1="310" x2="615" y2="310" stroke="#111827" strokeWidth="1.5" />
+          <line x1="60" y1="25" x2="60" y2="310" stroke="#0f172a" strokeWidth="1.5" />
+          <line x1="60" y1="310" x2="615" y2="310" stroke="#0f172a" strokeWidth="1.5" />
 
           <text
             x="20"
@@ -1010,12 +706,12 @@ function OverlayHistogramCard({
             transform="rotate(-90 20 170)"
             textAnchor="middle"
             fontSize="16"
-            fill="#111827"
+            fill="#0f172a"
           >
             人數
           </text>
 
-          <text x="338" y="355" textAnchor="middle" fontSize="16" fill="#111827">
+          <text x="338" y="355" textAnchor="middle" fontSize="16" fill="#0f172a">
             分數
           </text>
 
@@ -1023,8 +719,8 @@ function OverlayHistogramCard({
             const y = 310 - (tick / maxCount) * 250;
             return (
               <g key={idx}>
-                <line x1="55" y1={y} x2="60" y2={y} stroke="#111827" strokeWidth="1" />
-                <text x="48" y={y + 4} textAnchor="end" fontSize="12" fill="#374151">
+                <line x1="55" y1={y} x2="60" y2={y} stroke="#0f172a" strokeWidth="1" />
+                <text x="48" y={y + 4} textAnchor="end" fontSize="12" fill="#475569">
                   {tick}
                 </text>
                 <line
@@ -1032,7 +728,7 @@ function OverlayHistogramCard({
                   y1={y}
                   x2="615"
                   y2={y}
-                  stroke="#e5e7eb"
+                  stroke="#e2e8f0"
                   strokeWidth="1"
                 />
               </g>
@@ -1072,21 +768,24 @@ function OverlayHistogramCard({
                   y={yParent}
                   width={parentBarWidth}
                   height={parentHeight}
-                  fill="#8bb8ea"
+                  fill="#7cc7ee"
+                  rx="2"
                 />
                 <rect
                   x={xSimRaw}
                   y={ySimRaw}
                   width={simRawBarWidth}
                   height={simRawHeight}
-                  fill="rgba(251, 191, 36, 0.65)"
+                  fill="rgba(250, 204, 21, 0.65)"
+                  rx="2"
                 />
                 <rect
                   x={xSimFiltered}
                   y={ySimFiltered}
                   width={simFilteredBarWidth}
                   height={simFilteredHeight}
-                  fill="rgba(45, 92, 184, 0.85)"
+                  fill="rgba(37, 99, 235, 0.82)"
+                  rx="2"
                 />
 
                 {bin.score % 10 === 0 && (
@@ -1095,7 +794,7 @@ function OverlayHistogramCard({
                     y={330}
                     textAnchor="middle"
                     fontSize="11"
-                    fill="#374151"
+                    fill="#475569"
                   >
                     {bin.score}
                   </text>
@@ -1265,53 +964,387 @@ function toMultiplierNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-const sectionTitleStyle: React.CSSProperties = {
-  fontSize: "34px",
-  marginBottom: "14px",
-  color: "#111827",
+const pageStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  background:
+    "linear-gradient(180deg, #eef4ff 0%, #f7f9fc 20%, #f4f7fb 100%)",
+  padding: "32px 20px",
+  fontFamily:
+    'Arial, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif',
 };
 
-const buttonStyle: React.CSSProperties = {
-  padding: "14px 24px",
-  fontSize: "24px",
-  border: "1px solid #9ca3af",
-  borderRadius: "14px",
-  backgroundColor: "#eef2ff",
-  color: "#111827",
-  cursor: "pointer",
-  fontWeight: 600,
+const shellStyle: React.CSSProperties = {
+  maxWidth: "1520px",
+  margin: "0 auto",
+  background: "rgba(255,255,255,0.92)",
+  border: "1px solid rgba(226,232,240,0.9)",
+  borderRadius: "28px",
+  boxShadow: "0 20px 60px rgba(15, 23, 42, 0.08)",
+  overflow: "hidden",
+  backdropFilter: "blur(8px)",
 };
 
-const runButtonStyle: React.CSSProperties = {
-  padding: "16px 28px",
-  fontSize: "30px",
-  border: "1px solid #94a3b8",
-  borderRadius: "14px",
-  backgroundColor: "#dbeafe",
-  color: "#111827",
-  cursor: "pointer",
+const headerStyle: React.CSSProperties = {
+  padding: "32px 36px 18px",
+  borderBottom: "1px solid #e2e8f0",
+};
+
+const titleStyle: React.CSSProperties = {
+  fontSize: "60px",
+  lineHeight: 1.1,
+  margin: 0,
+  color: "#0f172a",
+  fontWeight: 800,
+  letterSpacing: "-0.02em",
+};
+
+const stepBarStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  flexWrap: "wrap",
+  gap: "10px",
+  padding: "18px 36px 0",
+};
+
+const stepPillStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "10px",
+  background: "#eef4ff",
+  border: "1px solid #dbeafe",
+  color: "#334155",
+  borderRadius: "999px",
+  padding: "10px 16px",
+  fontSize: "18px",
   fontWeight: 700,
 };
 
-const inputStyle: React.CSSProperties = {
-  width: "130px",
-  padding: "10px 12px",
+const stepIndexStyle: React.CSSProperties = {
+  width: "28px",
+  height: "28px",
+  borderRadius: "999px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "#dbeafe",
+  color: "#2563eb",
+  fontSize: "15px",
+  fontWeight: 800,
+};
+
+const stepArrowStyle: React.CSSProperties = {
+  color: "#94a3b8",
   fontSize: "24px",
-  border: "2px solid #94a3b8",
-  borderRadius: "12px",
-  backgroundColor: "#f1f5f9",
-  color: "#111827",
-  outline: "none",
+  fontWeight: 700,
+};
+
+const contentGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "460px minmax(0, 1fr)",
+  gap: "24px",
+  padding: "24px 36px 36px",
+};
+
+const leftColumnStyle: React.CSSProperties = {
+  minWidth: 0,
+};
+
+const rightColumnStyle: React.CSSProperties = {
+  minWidth: 0,
+};
+
+const cardStyle: React.CSSProperties = {
+  background: "#f8fbff",
+  border: "1px solid #dbe7f5",
+  borderRadius: "24px",
+  padding: "24px",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.75)",
+};
+
+const infoCardStyle: React.CSSProperties = {
+  background: "#f8fbff",
+  border: "1px solid #dbe7f5",
+  borderRadius: "24px",
+  overflow: "hidden",
+  boxShadow: "0 12px 30px rgba(37, 99, 235, 0.08)",
+};
+
+const cardHeaderStyle: React.CSSProperties = {
+  fontSize: "34px",
+  fontWeight: 800,
+  color: "#0f172a",
+  marginBottom: "18px",
+};
+
+const infoCardHeaderStyle: React.CSSProperties = {
+  background: "linear-gradient(90deg, #4f8df3 0%, #79aaf8 100%)",
+  color: "#ffffff",
+  padding: "18px 24px",
+  fontSize: "34px",
+  fontWeight: 800,
+};
+
+const infoGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: "16px 28px",
+  padding: "24px",
+  fontSize: "28px",
+  color: "#334155",
+  lineHeight: 1.6,
+};
+
+const emptyHintStyle: React.CSSProperties = {
+  padding: "24px",
+  fontSize: "22px",
+  color: "#64748b",
+};
+
+const twoColGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: "18px",
+};
+
+const fieldLabelStyle: React.CSSProperties = {
+  fontSize: "22px",
+  fontWeight: 700,
+  color: "#1e293b",
+  marginBottom: "10px",
+};
+
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: "28px",
+  fontWeight: 800,
+  color: "#0f172a",
+  marginBottom: "12px",
+};
+
+const fileRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "14px",
+  flexWrap: "wrap",
+};
+
+const fileNameStyle: React.CSSProperties = {
+  fontSize: "18px",
+  color: "#475569",
+  wordBreak: "break-all",
+  flex: 1,
+  minWidth: "180px",
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  width: "100%",
+  marginTop: "28px",
+  padding: "18px 24px",
+  fontSize: "32px",
+  fontWeight: 800,
+  color: "#ffffff",
+  background: "linear-gradient(90deg, #4f8df3 0%, #5f9dff 100%)",
+  border: "none",
+  borderRadius: "18px",
+  cursor: "pointer",
+  boxShadow: "0 12px 28px rgba(37, 99, 235, 0.22)",
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  padding: "14px 22px",
+  fontSize: "22px",
+  fontWeight: 800,
+  color: "#ffffff",
+  background: "linear-gradient(90deg, #4f8df3 0%, #5f9dff 100%)",
+  border: "none",
+  borderRadius: "16px",
+  cursor: "pointer",
+  boxShadow: "0 10px 24px rgba(37, 99, 235, 0.2)",
+};
+
+const outlineButtonStyle: React.CSSProperties = {
+  padding: "14px 22px",
+  fontSize: "22px",
+  fontWeight: 800,
+  color: "#1e293b",
+  background: "#ffffff",
+  border: "1px solid #cbd5e1",
+  borderRadius: "16px",
+  cursor: "pointer",
 };
 
 const selectStyle: React.CSSProperties = {
-  width: "320px",
-  maxWidth: "100%",
-  padding: "12px 14px",
-  fontSize: "24px",
-  border: "2px solid #94a3b8",
-  borderRadius: "12px",
-  backgroundColor: "#f1f5f9",
-  color: "#111827",
+  width: "100%",
+  padding: "14px 16px",
+  fontSize: "20px",
+  border: "2px solid #b8c7dc",
+  borderRadius: "16px",
+  backgroundColor: "#ffffff",
+  color: "#0f172a",
   outline: "none",
+};
+
+const smallInputStyle: React.CSSProperties = {
+  width: "120px",
+  padding: "12px 14px",
+  fontSize: "22px",
+  border: "2px solid #b8c7dc",
+  borderRadius: "16px",
+  backgroundColor: "#ffffff",
+  color: "#0f172a",
+  outline: "none",
+};
+
+const ratioPanelStyle: React.CSSProperties = {
+  background: "#f1f6fd",
+  border: "1px solid #d5e2f0",
+  borderRadius: "20px",
+  padding: "18px",
+};
+
+const ratioGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: "18px 20px",
+};
+
+const ratioItemStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "8px",
+};
+
+const ratioLabelStyle: React.CSSProperties = {
+  fontSize: "20px",
+  fontWeight: 800,
+  color: "#1e293b",
+};
+
+const ratioInputStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: "120px",
+  padding: "12px",
+  fontSize: "22px",
+  border: "2px solid #b8c7dc",
+  borderRadius: "14px",
+  backgroundColor: "#ffffff",
+  textAlign: "center",
+};
+
+const errorStyle: React.CSSProperties = {
+  marginTop: "18px",
+  color: "#b91c1c",
+  background: "#fee2e2",
+  border: "1px solid #fecaca",
+  padding: "14px 16px",
+  borderRadius: "14px",
+  fontSize: "18px",
+};
+
+const summaryRowStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "14px",
+  marginBottom: "18px",
+};
+
+const summaryBoxStyle: React.CSSProperties = {
+  background: "#ffffff",
+  border: "1px solid #dbe7f5",
+  borderRadius: "18px",
+  padding: "16px",
+};
+
+const summaryLabelStyle: React.CSSProperties = {
+  fontSize: "18px",
+  color: "#64748b",
+  marginBottom: "8px",
+  fontWeight: 700,
+};
+
+const summaryValueStyle: React.CSSProperties = {
+  fontSize: "34px",
+  color: "#0f172a",
+  fontWeight: 800,
+};
+
+const stepsBoxStyle: React.CSSProperties = {
+  background: "#ffffff",
+  border: "1px solid #dbe7f5",
+  borderRadius: "18px",
+  padding: "16px 18px",
+  marginBottom: "18px",
+};
+
+const stepTextStyle: React.CSSProperties = {
+  fontSize: "18px",
+  color: "#1e293b",
+  marginBottom: "10px",
+  lineHeight: 1.6,
+};
+
+const legendRowStyle: React.CSSProperties = {
+  display: "flex",
+  gap: "18px",
+  alignItems: "center",
+  flexWrap: "wrap",
+  marginBottom: "18px",
+  fontSize: "16px",
+  color: "#334155",
+};
+
+const chartGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(460px, 1fr))",
+  gap: "18px",
+};
+
+const chartCardStyle: React.CSSProperties = {
+  border: "1px solid #d7e3f1",
+  borderRadius: "20px",
+  padding: "18px",
+  background: "#ffffff",
+  boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
+};
+
+const chartTitleStyle: React.CSSProperties = {
+  fontSize: "24px",
+  marginBottom: "10px",
+  color: "#0f172a",
+  textAlign: "center",
+  fontWeight: 800,
+};
+
+const chartStatsWrapStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "8px",
+  marginBottom: "12px",
+};
+
+const chartStatsRowStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "90px 1fr 1fr 1fr",
+  gap: "12px",
+  alignItems: "center",
+  fontSize: "14px",
+  color: "#475569",
+};
+
+const statsTagStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "#e0f2fe",
+  color: "#0369a1",
+  borderRadius: "999px",
+  padding: "6px 10px",
+  fontWeight: 800,
+};
+
+const emptyChartStyle: React.CSSProperties = {
+  color: "#64748b",
+  fontSize: "18px",
+  padding: "24px 0",
+  textAlign: "center",
 };
