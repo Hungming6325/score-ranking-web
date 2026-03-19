@@ -676,22 +676,56 @@ function OverlayHistogramCard({
       <h3 style={chartTitleStyle}>{title}成績分布</h3>
 
       <div style={chartStatsWrapStyle}>
-        <div style={chartStatsRowStyle}>
-          <span style={statsTagStyle}>全國</span>
-          <span>平均數 <b>{parentStats.mean.toFixed(2)}</b></span>
-          <span>標準差 <b>{parentStats.sd.toFixed(2)}</b></span>
-          <span>總人數 <b>{parentStats.total.toLocaleString()}</b></span>
-        </div>
+  <div style={chartStatsRowStyle}>
+    <span style={statsTagStyle}>全國</span>
 
-        <div style={chartStatsRowStyle}>
-          <span style={{ ...statsTagStyle, background: "#f8fafc", color: "#64748b" }}>
-            模擬
-          </span>
-          <span>平均數 <b>{simStats.mean.toFixed(2)}</b></span>
-          <span>標準差 <b>{simStats.sd.toFixed(2)}</b></span>
-          <span>總人數 <b>{simStats.total.toLocaleString()}</b></span>
-        </div>
-      </div>
+    <span>
+      平均數{" "}
+      <b style={{ fontSize: "20px" }}>{parentStats.mean.toFixed(2)}</b>
+    </span>
+
+    <span>
+      標準差{" "}
+      <b style={{ fontSize: "20px" }}>{parentStats.sd.toFixed(2)}</b>
+    </span>
+
+    <span>
+      總人數{" "}
+      <b style={{ fontSize: "20px" }}>
+        {parentStats.total.toLocaleString()}
+      </b>
+    </span>
+  </div>
+
+  <div style={chartStatsRowStyle}>
+    <span
+      style={{
+        ...statsTagStyle,
+        background: "#f8fafc",
+        color: "#64748b",
+      }}
+    >
+      模擬
+    </span>
+
+    <span>
+      平均數{" "}
+      <b style={{ fontSize: "20px" }}>{simStats.mean.toFixed(2)}</b>
+    </span>
+
+    <span>
+      標準差{" "}
+      <b style={{ fontSize: "20px" }}>{simStats.sd.toFixed(2)}</b>
+    </span>
+
+    <span>
+      總人數{" "}
+      <b style={{ fontSize: "20px" }}>
+        {simStats.total.toLocaleString()}
+      </b>
+    </span>
+  </div>
+</div>
 
       {bins.length === 0 ? (
         <div style={emptyChartStyle}>尚無資料</div>
@@ -1324,11 +1358,11 @@ const chartStatsWrapStyle: React.CSSProperties = {
 
 const chartStatsRowStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "90px 1fr 1fr 1fr",
-  gap: "12px",
+  gridTemplateColumns: "100px 1fr 1fr 1fr",
+  gap: "16px",
   alignItems: "center",
-  fontSize: "14px",
-  color: "#475569",
+  fontSize: "18px",
+  color: "#334155",
 };
 
 const statsTagStyle: React.CSSProperties = {
