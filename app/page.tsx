@@ -1086,12 +1086,12 @@ const infoCardHeaderStyle: React.CSSProperties = {
 
 const infoGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: "16px 28px",
-  padding: "24px",
-  fontSize: "28px",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: "14px 24px",
+  padding: "20px 24px",
+  fontSize: "24px",
   color: "#334155",
-  lineHeight: 1.6,
+  lineHeight: 1.5,
 };
 
 const emptyHintStyle: React.CSSProperties = {
