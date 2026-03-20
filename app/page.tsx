@@ -370,25 +370,6 @@ export default function Home() {
     return simData.length;
   }, [simData]);
 
-  const globalLeftAxisMax = useMemo(() => {
-    const allBins = scoreFields.flatMap((field) =>
-      buildOverlayBins(parentData, simData, result, field)
-    );
-    const maxValue = Math.max(...allBins.map((b) => b.parentCount), 1);
-    return getNiceAxisMax(maxValue);
-  }, [parentData, simData, result]);
-
-  const globalRightAxisMax = useMemo(() => {
-    const allBins = scoreFields.flatMap((field) =>
-      buildOverlayBins(parentData, simData, result, field)
-    );
-    const maxValue = Math.max(
-      ...allBins.map((b) => Math.max(b.simRawCount, b.simFilteredCount)),
-      1
-    );
-    return getNiceAxisMax(maxValue);
-  }, [parentData, simData, result]);
-
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
@@ -600,24 +581,22 @@ export default function Home() {
                 </div>
               )}
 
-              <div style={legendRowStyle}>
-                <LegendBox color="#7cc7ee" label="全國成績分布" />
-                <LegendBox color="rgba(250, 204, 21, 0.65)" label="未篩選模擬成績分布" />
-                <LegendBox color="rgba(37, 99, 235, 0.82)" label="篩選後成績分布" />
-              </div>
+<div style={legendRowStyle}>
+  <LegendBox color="rgba(124, 199, 238, 0.42)" label="全國成績分布（面積）" />
+  <LegendBox color="rgba(250, 204, 21, 0.65)" label="未篩選模擬成績分布" />
+  <LegendBox color="rgba(37, 99, 235, 0.82)" label="篩選後成績分布" />
+</div>
 
               <div style={chartGridStyle}>
                 {scoreFields.map((field) => (
-                  <OverlayHistogramCard
-                    key={field}
-                    title={scoreFieldLabels[field]}
-                    parentRows={parentData}
-                    simRawRows={simData}
-                    simFilteredRows={result}
-                    field={field}
-                    leftAxisMax={globalLeftAxisMax}
-                    rightAxisMax={globalRightAxisMax}
-                  />
+<OverlayHistogramCard
+  key={field}
+  title={scoreFieldLabels[field]}
+  parentRows={parentData}
+  simRawRows={simData}
+  simFilteredRows={result}
+  field={field}
+/>
                 ))}
               </div>
             </div>
@@ -667,30 +646,33 @@ function LegendBox({ color, label }: { color: string; label: string }) {
     </div>
   );
 }
-
 function OverlayHistogramCard({
   title,
   parentRows,
   simRawRows,
   simFilteredRows,
   field,
-  leftAxisMax,
-  rightAxisMax,
 }: {
   title: string;
   parentRows: RowData[];
   simRawRows: RowData[];
   simFilteredRows: RowData[];
   field: FilterField;
-  leftAxisMax: number;
-  rightAxisMax: number;
 }) {
   const bins = buildOverlayBins(parentRows, simRawRows, simFilteredRows, field);
 
-  const leftMaxCount =
-    Number.isFinite(leftAxisMax) && leftAxisMax > 0 ? leftAxisMax : 1;
-  const rightMaxCount =
-    Number.isFinite(rightAxisMax) && rightAxisMax > 0 ? rightAxisMax : 1;
+  // 左側 Y 軸：只依照「該科」全國分布最大值決定，不考慮別科
+  const rawLeftMaxCount = Math.max(...bins.map((b) => b.parentCount), 1);
+  const leftMaxCount = Math.ceil(rawLeftMaxCount * 1.05);
+
+  // 右側 Y 軸：只依照「該科」模擬分布最大值決定，不考慮別科
+  const rawRightMaxCount = Math.max(
+    ...bins.map((b) => Math.max(b.simRawCount, b.simFilteredCount)),
+    1
+  );
+  const rightMaxCount = Math.ceil(rawRightMaxCount * 1.05);
+
+  const areaPath = buildAreaPath(bins, leftMaxCount);
 
   const parentStats = computeParentStats(parentRows, field);
   const simStats = computeSimStats(simRawRows, field);
@@ -807,25 +789,26 @@ function OverlayHistogramCard({
             );
           })}
 
+          <path
+            d={areaPath}
+            fill="rgba(124, 199, 238, 0.42)"
+            stroke="#7cc7ee"
+            strokeWidth="2"
+          />
+
           {bins.map((bin, index) => {
             const chartWidth = 540;
             const baseX = 70;
             const slotWidth = chartWidth / bins.length;
 
-            const parentBarWidth = Math.max(slotWidth * 0.82, 4);
             const simRawBarWidth = Math.max(slotWidth * 0.6, 3);
             const simFilteredBarWidth = Math.max(slotWidth * 0.36, 2);
 
-            const xParent =
-              baseX + index * slotWidth + (slotWidth - parentBarWidth) / 2;
             const xSimRaw =
               baseX + index * slotWidth + (slotWidth - simRawBarWidth) / 2;
             const xSimFiltered =
               baseX + index * slotWidth + (slotWidth - simFilteredBarWidth) / 2;
 
-            const parentHeight = Number.isFinite(bin.parentCount)
-              ? (bin.parentCount / leftMaxCount) * 250
-              : 0;
             const simRawHeight = Number.isFinite(bin.simRawCount)
               ? (bin.simRawCount / rightMaxCount) * 250
               : 0;
@@ -833,7 +816,6 @@ function OverlayHistogramCard({
               ? (bin.simFilteredCount / rightMaxCount) * 250
               : 0;
 
-            const yParent = Number.isFinite(parentHeight) ? 310 - parentHeight : 310;
             const ySimRaw = Number.isFinite(simRawHeight) ? 310 - simRawHeight : 310;
             const ySimFiltered = Number.isFinite(simFilteredHeight)
               ? 310 - simFilteredHeight
@@ -845,14 +827,6 @@ function OverlayHistogramCard({
                   {`${bin.score}分 ｜ 全國(左軸) ${bin.parentCount} 人 ｜ 未篩選模擬(右軸) ${bin.simRawCount} 人 ｜ 篩選後(右軸) ${bin.simFilteredCount} 人`}
                 </title>
 
-                <rect
-                  x={xParent}
-                  y={yParent}
-                  width={parentBarWidth}
-                  height={parentHeight}
-                  fill="#7cc7ee"
-                  rx="2"
-                />
                 <rect
                   x={xSimRaw}
                   y={ySimRaw}
@@ -889,7 +863,38 @@ function OverlayHistogramCard({
     </div>
   );
 }
+function buildAreaPath(
+  bins: HistogramBin[],
+  leftMaxCount: number,
+  chartLeft = 70,
+  chartBottom = 310,
+  chartHeight = 250,
+  chartWidth = 540
+) {
+  if (!bins.length || leftMaxCount <= 0) return "";
 
+  const slotWidth = chartWidth / bins.length;
+
+  const points = bins.map((bin, index) => {
+    const x = chartLeft + index * slotWidth + slotWidth / 2;
+    const y = chartBottom - (bin.parentCount / leftMaxCount) * chartHeight;
+    return { x, y };
+  });
+
+  if (!points.length) return "";
+
+  let d = `M ${points[0].x} ${chartBottom}`;
+  d += ` L ${points[0].x} ${points[0].y}`;
+
+  for (let i = 1; i < points.length; i++) {
+    d += ` L ${points[i].x} ${points[i].y}`;
+  }
+
+  d += ` L ${points[points.length - 1].x} ${chartBottom}`;
+  d += " Z";
+
+  return d;
+}
 function buildOverlayBins(
   parentRows: RowData[],
   simRawRows: RowData[],
