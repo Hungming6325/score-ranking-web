@@ -776,7 +776,7 @@ function UploadCard({
         📄
       </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={uploadContentStyle}>
         <div style={uploadTopRowStyle}>
           <div style={uploadCardTitleStyle}>{title}</div>
 
@@ -1411,7 +1411,7 @@ const layoutStyle: React.CSSProperties = {
 const sidebarStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "16px",
+  gap: "12px",
 };
 
 const contentStyle: React.CSSProperties = {
@@ -1425,7 +1425,7 @@ const panelStyle: React.CSSProperties = {
   background: "rgba(255,255,255,0.88)",
   border: "1px solid rgba(226,232,240,0.9)",
   borderRadius: "20px",
-  padding: "16px",
+  padding: "12px",
   boxShadow: "0 8px 28px rgba(15,23,42,0.05)",
   backdropFilter: "blur(10px)",
 };
@@ -1434,7 +1434,7 @@ const panelHeaderStyle: React.CSSProperties = {
   fontSize: "22px",
   fontWeight: 800,
   color: "#0f172a",
-  marginBottom: "6px",
+  marginBottom: "4px",
 };
 
 const panelSubtitleStyle: React.CSSProperties = {
@@ -1447,36 +1447,43 @@ const panelSubtitleStyle: React.CSSProperties = {
 const stackStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "12px",
+  gap: "8px",
 };
 
 const uploadCardStyle: React.CSSProperties = {
   display: "flex",
   gap: "10px",
-  alignItems: "flex-start",
-  padding: "12px",
+  alignItems: "stretch",
+  padding: "10px",
   border: "1px solid #e2e8f0",
   borderRadius: "16px",
   background: "#fbfdff",
 };
 
 const uploadIconStyle: React.CSSProperties = {
-  width: "50px",
-  height: "50px",
-  borderRadius: "14px",
+  width: "42px",
+  height: "42px",
+  borderRadius: "12px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: "22px",
+  fontSize: "18px",
   flexShrink: 0,
+};
+
+const uploadContentStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
 };
 
 const uploadTopRowStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "flex-start",
+  alignItems: "center",
   gap: "8px",
-  marginBottom: "8px",
 };
 
 const uploadCardTitleStyle: React.CSSProperties = {
@@ -1513,8 +1520,9 @@ const uploadButtonStyle: React.CSSProperties = {
   color: "#2563eb",
   fontWeight: 800,
   fontSize: "13px",
-  padding: "10px 12px",
+  padding: "6px 10px",
   cursor: "pointer",
+  lineHeight: 1.2,
 };
 
 const fieldBlockStyle: React.CSSProperties = {
