@@ -650,7 +650,7 @@ function UploadCard({
   isReady,
 }: {
   title: string;
-  desc: string;
+  desc?: string;
   fileName: string;
   buttonLabel: string;
   onClick: () => void;
@@ -671,7 +671,7 @@ function UploadCard({
         </div>
       </div>
 
-      <div style={uploadDescStyle}>{desc}</div>
+        {desc && <div style={uploadDescStyle}>{desc}</div>}
 
       <button onClick={onClick} style={uploadButtonStyle}>
         {buttonLabel}
