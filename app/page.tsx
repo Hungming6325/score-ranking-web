@@ -82,6 +82,13 @@ export default function Home() {
     專業二: 0,
   });
 
+  const resetSimulationOutput = () => {
+    setResult([]);
+    setSteps([]);
+    setHasSimulationRun(false);
+    setError("");
+  };
+
   const resetSimulationState = () => {
     setQuota(0);
     setMultiplier({
@@ -91,10 +98,7 @@ export default function Home() {
       專業一: 0,
       專業二: 0,
     });
-    setResult([]);
-    setSteps([]);
-    setHasSimulationRun(false);
-    setError("");
+    resetSimulationOutput();
   };
 
   const parseCsvFile = <T extends Record<string, unknown>>(
@@ -207,10 +211,7 @@ export default function Home() {
         }));
 
         setParentData(cleaned);
-        setError("");
-        setResult([]);
-        setSteps([]);
-        setHasSimulationRun(false);
+        resetSimulationOutput();
       }
     );
   };
@@ -238,10 +239,7 @@ export default function Home() {
         }));
 
         setSelectionData(cleaned);
-        setError("");
-        setResult([]);
-        setSteps([]);
-        setHasSimulationRun(false);
+        resetSimulationOutput();
       }
     );
   };
@@ -288,6 +286,24 @@ export default function Home() {
     );
   }, [parentData, selectedCategory]);
 
+  const activeFilters = useMemo(() => {
+    return scoreFields
+      .map((field) => ({
+        field,
+        times: Number(multiplier[field] || 0),
+      }))
+      .filter((item) => item.times >= 3);
+  }, [multiplier]);
+
+  const canRunSimulation =
+    !!configData.length &&
+    !!parentData.length &&
+    !!selectionData.length &&
+    !!selectedDepartment &&
+    !!selectedCategory &&
+    quota > 0 &&
+    activeFilters.length > 0;
+
   const calculate = () => {
     setError("");
     setSteps([]);
@@ -329,14 +345,8 @@ export default function Home() {
       return;
     }
 
-    const activeFilters = scoreFields
-      .map((field) => ({
-        field,
-        times: Number(multiplier[field] || 0),
-      }))
-      .filter((item) => item.times >= 3);
-
     if (!quota || quota <= 0 || activeFilters.length === 0) {
+      setError("請先設定招生人數，並至少填入一個倍率 ≥ 3 的科目");
       return;
     }
 
@@ -346,9 +356,7 @@ export default function Home() {
       .sort((a, b) => b - a)
       .map((times) => ({
         times,
-        fields: activeFilters
-          .filter((x) => x.times === times)
-          .map((x) => x.field),
+        fields: activeFilters.filter((x) => x.times === times).map((x) => x.field),
       }));
 
     const processSteps: string[] = [];
@@ -364,17 +372,21 @@ export default function Home() {
             0
           ),
         }))
-        .sort((a, b) => Number((b as any).__groupScore) - Number((a as any).__groupScore));
+        .sort(
+          (a, b) => Number((b as any).__groupScore) - Number((a as any).__groupScore)
+        );
 
       workingList = sorted
         .slice(0, limit)
         .map(({ __groupScore, ...rest }) => rest as SelectionRowData);
 
       const fieldLabel =
-        group.fields.length === 1 ? `${group.fields[0]}` : `${group.fields.join(" + ")}`;
+        group.fields.length === 1
+          ? `${group.fields[0]}`
+          : `${group.fields.join(" + ")}`;
 
       processSteps.push(
-        `倍率 ${group.times}：${fieldLabel} 加總篩選 → 保留前 ${limit} 人，目前剩 ${workingList.length} 人`
+        `倍率 ${group.times}：${fieldLabel} 加總篩選，保留前 ${limit} 人，目前剩 ${workingList.length} 人`
       );
     }
 
@@ -394,245 +406,308 @@ export default function Home() {
 
   return (
     <main style={pageStyle}>
-      <div style={shellStyle}>
-        <header style={headerStyle}>
-  <div style={headerMainStyle}>
-    <div style={headerTextWrapStyle}>
+      <div style={appShellStyle}>
+<header style={topHeaderStyle}>
+  <div style={brandWrapStyle}>
+    <div style={brandIconStyle}>🎓</div>
+    <div>
       <h1 style={titleStyle}>甄選入學成績倍率篩選系統</h1>
-    </div>
-
-    <div style={stepBarInlineStyle}>
-      <StepPill index={1} label="上傳倍率" />
-      <StepArrow />
-      <StepPill index={2} label="上傳全國成績" />
-      <StepArrow />
-      <StepPill index={3} label="上傳甄選成績" />
-      <StepArrow />
-      <StepPill index={4} label="選擇系群條件" />
-      <StepArrow />
-      <StepPill index={5} label="執行模擬" />
     </div>
   </div>
 </header>
 
-        <div style={contentGridStyle}>
-          <section style={leftColumnStyle}>
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>設定來源資料</div>
+        <div style={stepBarStyle}>
+          <StepPill index={1} label="上傳倍率" status={configFileName ? "done" : "idle"} />
+          <StepConnector />
+          <StepPill
+            index={2}
+            label="上傳全國成績"
+            status={parentFileName ? "done" : "idle"}
+          />
+          <StepConnector />
+          <StepPill
+            index={3}
+            label="上傳甄選成績"
+            status={selectionFileName ? "done" : "idle"}
+          />
+          <StepConnector />
+          <StepPill
+            index={4}
+            label="選擇系群條件"
+            status={selectedDepartment && selectedCategory ? "current" : "idle"}
+          />
+          <StepConnector />
+          <StepPill
+            index={5}
+            label="執行模擬"
+            status={hasSimulationRun ? "done" : "idle"}
+          />
+        </div>
 
-              <div style={uploadPanelStyle}>
-                <div style={uploadPanelHeaderStyle}>資料上傳區</div>
-                <div style={uploadGridStyle}>
-                  <UploadCard
-                    title="倍率設定檔"
-                    fileName={configFileName}
-                    buttonLabel="上傳倍率設定檔"
-                    onClick={() => configFileInputRef.current?.click()}
-                    isReady={!!configFileName}
-                  />
-                  <UploadCard
-                    title="全國成績檔案"
-                    fileName={parentFileName}
-                    buttonLabel="選擇全國成績檔案"
-                    onClick={() => parentFileInputRef.current?.click()}
-                    isReady={!!parentFileName}
-                  />
-                  <UploadCard
-                    title="甄選成績檔"
-                    fileName={selectionFileName}
-                    buttonLabel="選擇甄選成績檔"
-                    onClick={() => selectionFileInputRef.current?.click()}
-                    isReady={!!selectionFileName}
-                  />
-                </div>
+        <div style={layoutStyle}>
+<aside style={sidebarStyle}>
+  <Panel title="資料上傳">
+    <div style={stackStyle}>
+      <UploadCard
+        title="倍率設定檔"
+        fileName={configFileName}
+        buttonLabel="選擇倍率設定檔"
+        onClick={() => configFileInputRef.current?.click()}
+        isReady={!!configFileName}
+        accent="#3b82f6"
+      />
+      <UploadCard
+        title="全國成績檔案"
+        fileName={parentFileName}
+        buttonLabel="選擇全國成績檔案"
+        onClick={() => parentFileInputRef.current?.click()}
+        isReady={!!parentFileName}
+        accent="#10b981"
+      />
+      <UploadCard
+        title="甄選成績檔"
+        fileName={selectionFileName}
+        buttonLabel="選擇甄選成績檔"
+        onClick={() => selectionFileInputRef.current?.click()}
+        isReady={!!selectionFileName}
+        accent="#8b5cf6"
+      />
+    </div>
 
-                <input
-                  ref={configFileInputRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={handleConfigFile}
-                  style={{ display: "none" }}
-                />
-                <input
-                  ref={parentFileInputRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={handleParentFile}
-                  style={{ display: "none" }}
-                />
-                <input
-                  ref={selectionFileInputRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={handleSelectionFile}
-                  style={{ display: "none" }}
-                />
-              </div>
+    <input
+      ref={configFileInputRef}
+      type="file"
+      accept=".csv"
+      onChange={handleConfigFile}
+      style={{ display: "none" }}
+    />
+    <input
+      ref={parentFileInputRef}
+      type="file"
+      accept=".csv"
+      onChange={handleParentFile}
+      style={{ display: "none" }}
+    />
+    <input
+      ref={selectionFileInputRef}
+      type="file"
+      accept=".csv"
+      onChange={handleSelectionFile}
+      style={{ display: "none" }}
+    />
+  </Panel>
 
-              <div style={selectorPanelStyle}>
-                <div style={selectorPanelHeaderStyle}>條件選擇區</div>
-                <div style={twoColGridStyle}>
-                  <div>
-                    <div style={fieldLabelStyle}>招生系科</div>
-                    <select
-                      value={selectedDepartment}
-                      onChange={(e) => {
-                        const newDepartment = e.target.value;
-                        if (newDepartment !== selectedDepartment) {
-                          setSelectedDepartment(newDepartment);
-                          setSelectedCategory("");
-                          resetSimulationState();
-                        }
-                      }}
-                      style={selectStyle}
-                      disabled={!configData.length}
-                    >
-                      <option value="">請選擇系科</option>
-                      {departmentOptions.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+  <Panel title="招生條件設定">
+    <div style={fieldBlockStyle}>
+      <label style={fieldLabelStyle}>招生系科</label>
+      <select
+        value={selectedDepartment}
+        onChange={(e) => {
+          const newDepartment = e.target.value;
+          if (newDepartment !== selectedDepartment) {
+            setSelectedDepartment(newDepartment);
+            setSelectedCategory("");
+            resetSimulationState();
+          }
+        }}
+        style={selectStyle}
+        disabled={!configData.length}
+      >
+        <option value="">請選擇系科</option>
+        {departmentOptions.map((item) => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
+    </div>
 
-                  <div>
-                    <div style={fieldLabelStyle}>招生群類別</div>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => {
-                        const newCategory = e.target.value;
-                        if (newCategory !== selectedCategory) {
-                          setSelectedCategory(newCategory);
-                          resetSimulationState();
-                        }
-                      }}
-                      style={selectStyle}
-                      disabled={!selectedDepartment}
-                    >
-                      <option value="">請選擇群類別</option>
-                      {categoryOptions.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
+    <div style={fieldBlockStyle}>
+      <label style={fieldLabelStyle}>招生群類別</label>
+      <select
+        value={selectedCategory}
+        onChange={(e) => {
+          const newCategory = e.target.value;
+          if (newCategory !== selectedCategory) {
+            setSelectedCategory(newCategory);
+            resetSimulationState();
+          }
+        }}
+        style={selectStyle}
+        disabled={!selectedDepartment}
+      >
+        <option value="">請選擇群類別</option>
+        {categoryOptions.map((item) => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
+    </div>
+  </Panel>
 
-              <div style={{ marginTop: 18 }}>
-                <div style={sectionLabelStyle}>模擬參數設定</div>
+  <Panel title="模擬參數">
+    <div style={fieldBlockStyle}>
+      <label style={fieldLabelStyle}>招生人數</label>
+      <input
+        type="number"
+        min={0}
+        value={quota}
+        onChange={(e) => {
+          setQuota(Number(e.target.value));
+          resetSimulationOutput();
+        }}
+        style={inputStyle}
+      />
+    </div>
 
-                <div style={quotaPanelStyle}>
-                  <div style={fieldLabelStyle}>招生人數</div>
-                  <input
-                    type="number"
-                    min={0}
-                    value={quota}
-                    onChange={(e) => {
-                      setQuota(Number(e.target.value));
-                      setResult([]);
-                      setSteps([]);
-                      setHasSimulationRun(false);
-                    }}
-                    style={quotaInputStyle}
-                  />
-                </div>
+    <div style={dividerStyle} />
 
-                <div style={ratioPanelStyle}>
-                  <div style={ratioGridStyle}>
-                    {scoreFields.map((field) => (
-                      <div key={field} style={ratioItemStyle}>
-                        <label style={ratioLabelStyle}>{field}</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={multiplier[field]}
-                          onChange={(e) => {
-                            setMultiplier({
-                              ...multiplier,
-                              [field]: Number(e.target.value),
-                            });
-                            setResult([]);
-                            setSteps([]);
-                            setHasSimulationRun(false);
-                          }}
-                          style={ratioInputStyle}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+    <div style={{ marginBottom: 10 }}>
+      <div style={subSectionLabelStyle}>倍率設定（需 ≥ 3 才生效）</div>
+    </div>
 
-              <button onClick={calculate} style={primaryButtonStyle}>
-                執行
-              </button>
+    <div style={ratioGridStyle}>
+      {scoreFields.map((field) => (
+        <div key={field} style={ratioCardStyle}>
+          <div style={ratioTitleStyle}>{field}</div>
+          <input
+            type="number"
+            min={0}
+            value={multiplier[field]}
+            onChange={(e) => {
+              setMultiplier({
+                ...multiplier,
+                [field]: Number(e.target.value),
+              });
+              resetSimulationOutput();
+            }}
+            style={ratioInputStyle}
+          />
+        </div>
+      ))}
+    </div>
 
-              {error && <div style={errorStyle}>{error}</div>}
-            </div>
-          </section>
+    <button
+      onClick={calculate}
+      disabled={!canRunSimulation}
+      style={{
+        ...primaryButtonStyle,
+        marginTop: 18,
+        opacity: canRunSimulation ? 1 : 0.6,
+        cursor: canRunSimulation ? "pointer" : "not-allowed",
+      }}
+    >
+      開始模擬
+    </button>
 
-          <section style={rightColumnStyle}>
-            <div style={infoCardStyle}>
-              <div style={infoCardHeaderStyle}>招生條件摘要</div>
+    {!canRunSimulation && (
+      <div style={mutedHintStyle}>請確認檔案、系群條件、招生人數與倍率設定</div>
+    )}
+
+    {error && <div style={errorStyle}>{error}</div>}
+  </Panel>
+</aside>
+
+
+          <section style={contentStyle}>
+            <Card title="招生條件摘要">
               {selectedConfig ? (
                 <div style={summaryInfoGridStyle}>
                   <InfoMiniCard
                     label="原始招生名額"
                     value={toMultiplierNumber(selectedConfig["一般考生招生名額"])}
+                    tone="default"
                   />
-                  <InfoMiniCard label="國文倍率" value={toMultiplierNumber(selectedConfig["國文"])} />
-                  <InfoMiniCard label="英文倍率" value={toMultiplierNumber(selectedConfig["英文"])} />
-                  <InfoMiniCard label="數學倍率" value={toMultiplierNumber(selectedConfig["數學"])} />
-                  <InfoMiniCard label="專業一倍率" value={toMultiplierNumber(selectedConfig["專業一"])} />
-                  <InfoMiniCard label="專業二倍率" value={toMultiplierNumber(selectedConfig["專業二"])} />
+                  <InfoMiniCard
+                    label="國文倍率"
+                    value={toMultiplierNumber(selectedConfig["國文"])}
+                    tone="red"
+                  />
+                  <InfoMiniCard
+                    label="英文倍率"
+                    value={toMultiplierNumber(selectedConfig["英文"])}
+                    tone="orange"
+                  />
+                  <InfoMiniCard
+                    label="數學倍率"
+                    value={toMultiplierNumber(selectedConfig["數學"])}
+                    tone="blue"
+                  />
+                  <InfoMiniCard
+                    label="專業一倍率"
+                    value={toMultiplierNumber(selectedConfig["專業一"])}
+                    tone="violet"
+                  />
+                  <InfoMiniCard
+                    label="專業二倍率"
+                    value={toMultiplierNumber(selectedConfig["專業二"])}
+                    tone="green"
+                  />
                 </div>
               ) : (
-                <div style={emptyHintStyle}>
+                <div style={emptyStateStyle}>
                   請先完成三份檔案上傳，並選擇招生系科與招生群類別。
                 </div>
               )}
-            </div>
+            </Card>
 
-            <div style={{ ...cardStyle, marginTop: 20 }}>
-              <div style={cardHeaderStyle}>篩選流程與結果</div>
-
+            <Card title="篩選結果統計">
               <div style={summaryRowStyle}>
-                <SummaryBox label="全國人數" value={parentDisplayCount} />
-                <SummaryBox label="甄選人數" value={selectionDisplayCount} />
-                <SummaryBox label="篩選後人數" value={hasSimulationRun ? result.length : 0} />
+                <SummaryBox
+                  label="全國人數"
+                  value={parentDisplayCount}
+                  tone="blue"
+                  sublabel="群類總人數"
+                />
+                <SummaryBox
+                  label="甄選人數"
+                  value={selectionDisplayCount}
+                  tone="violet"
+                  sublabel="二階報名考生"
+                />
+                <SummaryBox
+                  label="篩選後人數"
+                  value={hasSimulationRun ? result.length : 0}
+                  tone="green"
+                  sublabel={hasSimulationRun ? "模擬完成" : "尚未執行"}
+                />
               </div>
 
-              {hasSimulationRun && steps.length > 0 && (
-                <div style={stepsBoxStyle}>
-                  {steps.map((step, index) => (
-                    <div key={index} style={stepTextStyle}>
-                      {index + 1}. {step}
-                    </div>
-                  ))}
+              {steps.length > 0 && (
+                <div style={stepFlowBoxStyle}>
+                  <div style={stepFlowTitleStyle}>篩選流程</div>
+                  <div style={stepChipWrapStyle}>
+                    {steps.map((step, index) => (
+                      <div key={index} style={flowItemStyle}>
+                        <span style={flowIndexStyle}>{index + 1}</span>
+                        <span>{step}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
               <div style={legendRowStyle}>
-                <LegendBox color="rgba(124, 199, 238, 0.42)" label="全國成績分布（面積）" />
-                <LegendBox color="rgba(250, 204, 21, 0.65)" label="未篩選甄選成績分布" />
-                <LegendBox color="rgba(37, 99, 235, 0.82)" label="篩選後成績分布" />
+                <LegendBox color="rgba(110, 193, 255, 0.30)" label="全國成績分布" />
+                <LegendBox color="rgba(245, 183, 32, 0.75)" label="未篩選甄選成績分布" />
+                <LegendBox color="rgba(51, 96, 255, 0.82)" label="篩選後成績分布" />
               </div>
+            </Card>
 
-              <div style={chartGridStyle}>
-                {scoreFields.map((field) => (
-                  <OverlayHistogramCard
-                    key={field}
-                    title={field}
-                    parentRows={linkedParentData}
-                    selectionRawRows={linkedSelectionData}
-                    selectionFilteredRows={hasSimulationRun ? result : []}
-                    field={field}
-                  />
-                ))}
-              </div>
+            <div style={chartsSectionTitleStyle}>各科成績分布</div>
+
+            <div style={chartGridStyle}>
+              {scoreFields.map((field) => (
+                <OverlayHistogramCard
+                  key={field}
+                  title={field}
+                  parentRows={linkedParentData}
+                  selectionRawRows={linkedSelectionData}
+                  selectionFilteredRows={hasSimulationRun ? result : []}
+                  field={field}
+                />
+              ))}
             </div>
           </section>
         </div>
@@ -641,89 +716,219 @@ export default function Home() {
   );
 }
 
+function Panel({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section style={panelStyle}>
+      <div style={panelHeaderStyle}>{title}</div>
+      {subtitle ? <div style={panelSubtitleStyle}>{subtitle}</div> : null}
+      {children}
+    </section>
+  );
+}
+
+function Card({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section style={cardStyle}>
+      <div style={cardHeaderStyle}>{title}</div>
+      {children}
+    </section>
+  );
+}
+
 function UploadCard({
   title,
-  desc,
   fileName,
   buttonLabel,
   onClick,
   isReady,
+  accent,
 }: {
   title: string;
-  desc?: string;
   fileName: string;
   buttonLabel: string;
   onClick: () => void;
   isReady: boolean;
+  accent: string;
 }) {
   return (
     <div style={uploadCardStyle}>
-      <div style={uploadCardTopStyle}>
-        <div style={uploadCardTitleStyle}>{title}</div>
-        <div
-          style={{
-            ...uploadStatusStyle,
-            background: isReady ? "#dcfce7" : "#f1f5f9",
-            color: isReady ? "#166534" : "#64748b",
-          }}
-        >
-          {isReady ? "已上傳" : "待上傳"}
-        </div>
+      <div
+        style={{
+          ...uploadIconStyle,
+          background: `${accent}18`,
+          color: accent,
+        }}
+      >
+        📄
       </div>
 
-        {desc && <div style={uploadDescStyle}>{desc}</div>}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={uploadTopRowStyle}>
+          <div style={uploadCardTitleStyle}>{title}</div>
 
-      <button onClick={onClick} style={uploadButtonStyle}>
-        {buttonLabel}
-      </button>
+          <div
+            style={{
+              ...uploadStatusStyle,
+              background: isReady ? "#dcfce7" : "#eef2f7",
+              color: isReady ? "#166534" : "#64748b",
+            }}
+          >
+            {isReady ? "已上傳" : "待上傳"}
+          </div>
+        </div>
 
-      <div style={uploadFileNameStyle}>{fileName || "尚未選擇檔案"}</div>
+        <button onClick={onClick} style={uploadButtonStyle}>
+          {buttonLabel}
+        </button>
+      </div>
     </div>
   );
 }
+function InfoMiniCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "default" | "red" | "orange" | "blue" | "violet" | "green";
+}) {
+  const toneMap = {
+    default: { bg: "#f8fafc", color: "#0f172a" },
+    red: { bg: "#fff1f2", color: "#dc2626" },
+    orange: { bg: "#fff7ed", color: "#ea580c" },
+    blue: { bg: "#eff6ff", color: "#2563eb" },
+    violet: { bg: "#f5f3ff", color: "#7c3aed" },
+    green: { bg: "#ecfdf5", color: "#059669" },
+  };
 
-function InfoMiniCard({ label, value }: { label: string; value: number }) {
   return (
-    <div style={infoMiniCardStyle}>
+    <div style={{ ...infoMiniCardStyle, background: toneMap[tone].bg }}>
       <div style={infoMiniLabelStyle}>{label}</div>
-      <div style={infoMiniValueStyle}>{value}</div>
+      <div style={{ ...infoMiniValueStyle, color: toneMap[tone].color }}>{value}</div>
     </div>
   );
 }
 
-function StepPill({ index, label }: { index: number; label: string }) {
+function StepPill({
+  index,
+  label,
+  status,
+}: {
+  index: number;
+  label: string;
+  status: "done" | "current" | "idle";
+}) {
+  const styles = {
+    done: {
+      bg: "#ecfdf5",
+      border: "#bbf7d0",
+      text: "#166534",
+      circleBg: "#22c55e",
+      circleText: "#ffffff",
+    },
+    current: {
+      bg: "#eff6ff",
+      border: "#bfdbfe",
+      text: "#1d4ed8",
+      circleBg: "#2563eb",
+      circleText: "#ffffff",
+    },
+    idle: {
+      bg: "#ffffff",
+      border: "#e2e8f0",
+      text: "#64748b",
+      circleBg: "#e2e8f0",
+      circleText: "#475569",
+    },
+  }[status];
+
   return (
-    <div style={stepPillStyle}>
-      <span style={stepIndexStyle}>{index}</span>
+    <div
+      style={{
+        ...stepPillStyle,
+        background: styles.bg,
+        borderColor: styles.border,
+        color: styles.text,
+      }}
+    >
+      <span
+        style={{
+          ...stepIndexStyle,
+          background: styles.circleBg,
+          color: styles.circleText,
+        }}
+      >
+        {status === "done" ? "✓" : index}
+      </span>
       <span>{label}</span>
     </div>
   );
 }
 
-function StepArrow() {
-  return <div style={stepArrowStyle}>›</div>;
+function StepConnector() {
+  return <div style={stepConnectorStyle} />;
 }
 
-function SummaryBox({ label, value }: { label: string; value: number }) {
+function SummaryBox({
+  label,
+  value,
+  tone,
+  sublabel,
+}: {
+  label: string;
+  value: number;
+  tone: "blue" | "violet" | "green";
+  sublabel: string;
+}) {
+  const palette = {
+    blue: { bg: "#eff6ff", num: "#1d4ed8", border: "#dbeafe" },
+    violet: { bg: "#f5f3ff", num: "#7c3aed", border: "#ddd6fe" },
+    green: { bg: "#ecfdf5", num: "#059669", border: "#a7f3d0" },
+  }[tone];
+
   return (
-    <div style={summaryBoxStyle}>
+    <div
+      style={{
+        ...summaryBoxStyle,
+        background: palette.bg,
+        borderColor: palette.border,
+      }}
+    >
       <div style={summaryLabelStyle}>{label}</div>
-      <div style={summaryValueStyle}>{value.toLocaleString()}</div>
+      <div style={{ ...summaryValueStyle, color: palette.num }}>
+        {value.toLocaleString()}
+      </div>
+      <div style={summarySubLabelStyle}>{sublabel}</div>
     </div>
   );
 }
 
 function LegendBox({ color, label }: { color: string; label: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div style={legendItemStyle}>
       <span
         style={{
-          display: "inline-block",
-          width: "24px",
-          height: "14px",
+          width: 14,
+          height: 14,
+          borderRadius: 999,
           background: color,
-          borderRadius: "999px",
-          border: "1px solid rgba(148, 163, 184, 0.8)",
+          border: "1px solid rgba(148,163,184,0.6)",
+          display: "inline-block",
         }}
       />
       <span>{label}</span>
@@ -767,41 +972,23 @@ function OverlayHistogramCard({
 
   return (
     <div style={chartCardStyle}>
-      <h3 style={chartTitleStyle}>{title}成績分布</h3>
+      <div style={chartHeaderRowStyle}>
+        <h3 style={chartTitleStyle}>{title}成績分布</h3>
+      </div>
 
       <div style={chartStatsWrapStyle}>
-        <div style={chartStatsRowStyle}>
-          <span style={statsTagStyle}>全國</span>
-          <span>
-            平均數 <b style={{ fontSize: "20px" }}>{parentStats.mean.toFixed(2)}</b>
-          </span>
-          <span>
-            標準差 <b style={{ fontSize: "20px" }}>{parentStats.sd.toFixed(2)}</b>
-          </span>
-          <span>
-            總人數 <b style={{ fontSize: "20px" }}>{parentStats.total.toLocaleString()}</b>
-          </span>
+        <div style={chartStatGroupStyle}>
+          <span style={statsTagBlueStyle}>全國</span>
+          <span style={chartStatTextStyle}>平均 {parentStats.mean.toFixed(2)}</span>
+          <span style={chartStatTextStyle}>標準差 {parentStats.sd.toFixed(2)}</span>
+          <span style={chartStatTextStyle}>人數 {parentStats.total.toLocaleString()}</span>
         </div>
 
-        <div style={chartStatsRowStyle}>
-          <span
-            style={{
-              ...statsTagStyle,
-              background: "#f8fafc",
-              color: "#64748b",
-            }}
-          >
-            甄選
-          </span>
-          <span>
-            平均數 <b style={{ fontSize: "20px" }}>{selectionStats.mean.toFixed(2)}</b>
-          </span>
-          <span>
-            標準差 <b style={{ fontSize: "20px" }}>{selectionStats.sd.toFixed(2)}</b>
-          </span>
-          <span>
-            總人數 <b style={{ fontSize: "20px" }}>{selectionStats.total.toLocaleString()}</b>
-          </span>
+        <div style={chartStatGroupStyle}>
+          <span style={statsTagGrayStyle}>甄選</span>
+          <span style={chartStatTextStyle}>平均 {selectionStats.mean.toFixed(2)}</span>
+          <span style={chartStatTextStyle}>標準差 {selectionStats.sd.toFixed(2)}</span>
+          <span style={chartStatTextStyle}>人數 {selectionStats.total.toLocaleString()}</span>
         </div>
       </div>
 
@@ -809,17 +996,17 @@ function OverlayHistogramCard({
         <div style={emptyChartStyle}>尚無資料</div>
       ) : (
         <svg viewBox="0 0 660 380" style={{ width: "100%", height: "auto" }}>
-          <line x1="60" y1="25" x2="60" y2="310" stroke="#0f172a" strokeWidth="1.5" />
-          <line x1="615" y1="25" x2="615" y2="310" stroke="#2563eb" strokeWidth="1.5" />
-          <line x1="60" y1="310" x2="615" y2="310" stroke="#0f172a" strokeWidth="1.5" />
+          <line x1="60" y1="25" x2="60" y2="310" stroke="#334155" strokeWidth="1.2" />
+          <line x1="615" y1="25" x2="615" y2="310" stroke="#2563eb" strokeWidth="1.2" />
+          <line x1="60" y1="310" x2="615" y2="310" stroke="#334155" strokeWidth="1.2" />
 
           <text
             x="20"
             y="170"
             transform="rotate(-90 20 170)"
             textAnchor="middle"
-            fontSize="16"
-            fill="#0f172a"
+            fontSize="15"
+            fill="#334155"
           >
             全國人數
           </text>
@@ -829,13 +1016,13 @@ function OverlayHistogramCard({
             y="170"
             transform="rotate(90 645 170)"
             textAnchor="middle"
-            fontSize="16"
+            fontSize="15"
             fill="#2563eb"
           >
             甄選人數
           </text>
 
-          <text x="338" y="355" textAnchor="middle" fontSize="16" fill="#0f172a">
+          <text x="338" y="355" textAnchor="middle" fontSize="15" fill="#334155">
             分數
           </text>
 
@@ -843,11 +1030,11 @@ function OverlayHistogramCard({
             const y = 310 - (tick / leftMaxCount) * 250;
             return (
               <g key={`left-${idx}`}>
-                <line x1="55" y1={y} x2="60" y2={y} stroke="#0f172a" strokeWidth="1" />
-                <text x="48" y={y + 4} textAnchor="end" fontSize="12" fill="#475569">
+                <line x1="55" y1={y} x2="60" y2={y} stroke="#334155" strokeWidth="1" />
+                <text x="48" y={y + 4} textAnchor="end" fontSize="11" fill="#64748b">
                   {tick}
                 </text>
-                <line x1="60" y1={y} x2="615" y2={y} stroke="#e2e8f0" strokeWidth="1" />
+                <line x1="60" y1={y} x2="615" y2={y} stroke="#eef2f7" strokeWidth="1" />
               </g>
             );
           })}
@@ -857,7 +1044,7 @@ function OverlayHistogramCard({
             return (
               <g key={`right-${idx}`}>
                 <line x1="615" y1={y} x2="620" y2={y} stroke="#2563eb" strokeWidth="1" />
-                <text x="628" y={y + 4} textAnchor="start" fontSize="12" fill="#2563eb">
+                <text x="628" y={y + 4} textAnchor="start" fontSize="11" fill="#2563eb">
                   {tick}
                 </text>
               </g>
@@ -866,8 +1053,8 @@ function OverlayHistogramCard({
 
           <path
             d={areaPath}
-            fill="rgba(124, 199, 238, 0.42)"
-            stroke="#7cc7ee"
+            fill="rgba(110, 193, 255, 0.30)"
+            stroke="#67b8f7"
             strokeWidth="2"
           />
 
@@ -876,8 +1063,8 @@ function OverlayHistogramCard({
             const baseX = 70;
             const slotWidth = chartWidth / bins.length;
 
-            const rawBarWidth = Math.max(slotWidth * 0.6, 3);
-            const filteredBarWidth = Math.max(slotWidth * 0.36, 2);
+            const rawBarWidth = Math.max(slotWidth * 0.58, 3);
+            const filteredBarWidth = Math.max(slotWidth * 0.34, 2);
 
             const xRaw = baseX + index * slotWidth + (slotWidth - rawBarWidth) / 2;
             const xFiltered =
@@ -886,6 +1073,7 @@ function OverlayHistogramCard({
             const rawHeight = Number.isFinite(bin.selectionRawCount)
               ? (bin.selectionRawCount / rightMaxCount) * 250
               : 0;
+
             const filteredHeight = Number.isFinite(bin.selectionFilteredCount)
               ? (bin.selectionFilteredCount / rightMaxCount) * 250
               : 0;
@@ -906,7 +1094,7 @@ function OverlayHistogramCard({
                   y={yRaw}
                   width={rawBarWidth}
                   height={rawHeight}
-                  fill="rgba(250, 204, 21, 0.65)"
+                  fill="rgba(245, 183, 32, 0.75)"
                   rx="2"
                 />
                 <rect
@@ -914,7 +1102,7 @@ function OverlayHistogramCard({
                   y={yFiltered}
                   width={filteredBarWidth}
                   height={filteredHeight}
-                  fill="rgba(37, 99, 235, 0.82)"
+                  fill="rgba(51, 96, 255, 0.82)"
                   rx="2"
                 />
 
@@ -924,7 +1112,7 @@ function OverlayHistogramCard({
                     y={330}
                     textAnchor="middle"
                     fontSize="11"
-                    fill="#475569"
+                    fill="#64748b"
                   >
                     {bin.score}
                   </text>
@@ -1121,259 +1309,348 @@ function toMultiplierNumber(value: unknown): number {
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
-  background: "linear-gradient(180deg, #eef4ff 0%, #f7f9fc 24%, #f4f7fb 100%)",
-  padding: "32px 20px",
+  background:
+    "linear-gradient(180deg, #eef3f9 0%, #f6f8fb 38%, #f3f6fa 100%)",
+  padding: "24px",
   fontFamily:
-    'Arial, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif',
+    '"Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif',
+  color: "#0f172a",
 };
 
-const shellStyle: React.CSSProperties = {
-  maxWidth: "1540px",
+const appShellStyle: React.CSSProperties = {
+  maxWidth: "1560px",
   margin: "0 auto",
-  background: "rgba(255,255,255,0.94)",
-  border: "1px solid rgba(226,232,240,0.9)",
-  borderRadius: "28px",
-  boxShadow: "0 24px 70px rgba(15, 23, 42, 0.08)",
-  overflow: "hidden",
-  backdropFilter: "blur(10px)",
 };
 
-const headerStyle: React.CSSProperties = {
-  padding: "24px 36px 18px",
-  borderBottom: "1px solid #e2e8f0",
-};
-
-const headerMainStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: "24px",
-};
-
-const headerTextWrapStyle: React.CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-};
-
-const stepBarInlineStyle: React.CSSProperties = {
+const topHeaderStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  flexWrap: "nowrap",
-  gap: "8px",
-  justifyContent: "flex-end",
-  overflowX: "auto",
-  whiteSpace: "nowrap",
+  background: "rgba(255,255,255,0.86)",
+  border: "1px solid rgba(226,232,240,0.9)",
+  borderRadius: "24px",
+  padding: "22px 24px",
+  boxShadow: "0 12px 32px rgba(15,23,42,0.06)",
+  backdropFilter: "blur(10px)",
+};
+const brandWrapStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "14px",
+};
+
+const brandIconStyle: React.CSSProperties = {
+  width: "52px",
+  height: "52px",
+  borderRadius: "16px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "28px",
+  background: "linear-gradient(135deg, #2563eb 0%, #4f8cff 100%)",
+  color: "#fff",
+  boxShadow: "0 10px 24px rgba(37,99,235,0.22)",
 };
 
 const titleStyle: React.CSSProperties = {
-  fontSize: "40px",
-  lineHeight: 1.1,
   margin: 0,
-  color: "#0f172a",
+  fontSize: "32px",
+  lineHeight: 1.1,
   fontWeight: 800,
-  letterSpacing: "-0.02em",
+  letterSpacing: "-0.03em",
+  color: "#0f172a",
 };
 
-const subtitleStyle: React.CSSProperties = {
-  margin: "12px 0 0",
-  fontSize: "18px",
-  lineHeight: 1.7,
-  color: "#64748b",
-};
 
 const stepBarStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  flexWrap: "wrap",
   gap: "10px",
-  padding: "18px 36px 0",
+  overflowX: "auto",
+  padding: "16px 4px 0",
+  marginBottom: "20px",
 };
 
 const stepPillStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: "8px",
-  background: "#eef4ff",
-  border: "1px solid #dbeafe",
-  color: "#334155",
+  gap: "10px",
+  border: "1px solid",
   borderRadius: "999px",
-  padding: "8px 12px",
-  fontSize: "16px",
+  padding: "10px 14px",
+  fontSize: "14px",
   fontWeight: 700,
-  flexShrink:0,
+  whiteSpace: "nowrap",
+  flexShrink: 0,
 };
 
 const stepIndexStyle: React.CSSProperties = {
-  width: "28px",
-  height: "28px",
+  width: "26px",
+  height: "26px",
   borderRadius: "999px",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "#dbeafe",
-  color: "#2563eb",
-  fontSize: "15px",
-  fontWeight: 800,
-};
-
-const stepArrowStyle: React.CSSProperties = {
-  color: "#94a3b8",
-  fontSize: "24px",
-  fontWeight: 700,
-};
-
-const contentGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "520px minmax(0, 1fr)",
-  gap: "24px",
-  padding: "24px 36px 36px",
-};
-
-const leftColumnStyle: React.CSSProperties = {
-  minWidth: 0,
-};
-
-const rightColumnStyle: React.CSSProperties = {
-  minWidth: 0,
-};
-
-const cardStyle: React.CSSProperties = {
-  background: "#f8fbff",
-  border: "1px solid #dbe7f5",
-  borderRadius: "24px",
-  padding: "18px",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.75)",
-};
-
-const infoCardStyle: React.CSSProperties = {
-  background: "#f8fbff",
-  border: "1px solid #dbe7f5",
-  borderRadius: "20px",
-  overflow: "hidden",
-  boxShadow: "0 8px 20px rgba(37, 99, 235, 0.06)",
-};
-
-const cardHeaderStyle: React.CSSProperties = {
-  fontSize: "26px",
-  fontWeight: 800,
-  color: "#0f172a",
-  marginBottom: "12px",
-};
-
-const infoCardHeaderStyle: React.CSSProperties = {
-  background: "linear-gradient(90deg, #4f8df3 0%, #79aaf8 100%)",
-  color: "#ffffff",
-  padding: "14px 20px",
-  fontSize: "24px",
-  fontWeight: 800,
-};
-
-const uploadPanelStyle: React.CSSProperties = {
-  background: "linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%)",
-  border: "1px solid #dbeafe",
-  borderRadius: "22px",
-  padding: "16px",
-  marginBottom: "18px",
-};
-
-const uploadPanelHeaderStyle: React.CSSProperties = {
-  fontSize: "20px",
-  fontWeight: 800,
-  color: "#1e3a8a",
-  marginBottom: "12px",
-};
-
-const uploadGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr",
-  gap: "12px",
-};
-
-const uploadCardStyle: React.CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #dbe7f5",
-  borderRadius: "18px",
-  padding: "14px",
-  boxShadow: "0 8px 18px rgba(15, 23, 42, 0.04)",
-};
-
-const uploadCardTopStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "10px",
-  marginBottom: "6px",
-};
-
-const uploadCardTitleStyle: React.CSSProperties = {
-  fontSize: "20px",
-  fontWeight: 800,
-  color: "#0f172a",
-};
-
-const uploadStatusStyle: React.CSSProperties = {
-  padding: "5px 9px",
-  borderRadius: "999px",
   fontSize: "13px",
   fontWeight: 800,
 };
 
-const uploadDescStyle: React.CSSProperties = {
-  fontSize: "14px",
+const stepConnectorStyle: React.CSSProperties = {
+  width: "28px",
+  height: "1px",
+  background: "#cbd5e1",
+  flexShrink: 0,
+};
+
+const layoutStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "340px minmax(0, 1fr)",
+  gap: "18px",
+  alignItems: "start",
+};
+
+const sidebarStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "16px",
+};
+
+const contentStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "16px",
+  minWidth: 0,
+};
+
+const panelStyle: React.CSSProperties = {
+  background: "rgba(255,255,255,0.88)",
+  border: "1px solid rgba(226,232,240,0.9)",
+  borderRadius: "20px",
+  padding: "16px",
+  boxShadow: "0 8px 28px rgba(15,23,42,0.05)",
+  backdropFilter: "blur(10px)",
+};
+
+const panelHeaderStyle: React.CSSProperties = {
+  fontSize: "22px",
+  fontWeight: 800,
+  color: "#0f172a",
+  marginBottom: "6px",
+};
+
+const panelSubtitleStyle: React.CSSProperties = {
+  fontSize: "13px",
   color: "#64748b",
-  lineHeight: 1.5,
+  lineHeight: 1.6,
+  marginBottom: "14px",
+};
+
+const stackStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+};
+
+const uploadCardStyle: React.CSSProperties = {
+  display: "flex",
+  gap: "10px",
+  alignItems: "flex-start",
+  padding: "12px",
+  border: "1px solid #e2e8f0",
+  borderRadius: "16px",
+  background: "#fbfdff",
+};
+
+const uploadIconStyle: React.CSSProperties = {
+  width: "50px",
+  height: "50px",
+  borderRadius: "14px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "22px",
+  flexShrink: 0,
+};
+
+const uploadTopRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "8px",
+  marginBottom: "8px",
+};
+
+const uploadCardTitleStyle: React.CSSProperties = {
+  fontSize: "16px",
+  fontWeight: 800,
+  color: "#0f172a",
+  lineHeight: 1.2,
+};
+
+const uploadStatusStyle: React.CSSProperties = {
+  borderRadius: "999px",
+  padding: "5px 10px",
+  fontSize: "12px",
+  fontWeight: 800,
+  flexShrink: 0,
+};
+
+const fileNameBoxStyle: React.CSSProperties = {
+  fontSize: "13px",
+  color: "#475569",
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  borderRadius: "12px",
+  padding: "10px 12px",
+  wordBreak: "break-all",
   marginBottom: "10px",
 };
 
 const uploadButtonStyle: React.CSSProperties = {
   width: "100%",
-  padding: "13px 16px",
-  fontSize: "18px",
+  border: "none",
+  borderRadius: "10px",
+  background: "#eef4ff",
+  color: "#2563eb",
+  fontWeight: 800,
+  fontSize: "13px",
+  padding: "10px 12px",
+  cursor: "pointer",
+};
+
+const fieldBlockStyle: React.CSSProperties = {
+  marginBottom: "14px",
+};
+
+const fieldLabelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "13px",
+  fontWeight: 700,
+  color: "#334155",
+  marginBottom: "8px",
+};
+
+const selectStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid #d7dee8",
+  borderRadius: "14px",
+  padding: "12px 14px",
+  fontSize: "15px",
+  color: "#0f172a",
+  background: "#ffffff",
+  outline: "none",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid #d7dee8",
+  borderRadius: "14px",
+  padding: "12px 14px",
+  fontSize: "15px",
+  color: "#0f172a",
+  background: "#ffffff",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const dividerStyle: React.CSSProperties = {
+  height: 1,
+  background: "#e8edf4",
+  margin: "16px 0",
+};
+
+const subSectionLabelStyle: React.CSSProperties = {
+  fontSize: "13px",
+  fontWeight: 800,
+  color: "#475569",
+};
+
+const ratioGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "10px",
+};
+
+const ratioCardStyle: React.CSSProperties = {
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  borderRadius: "14px",
+  padding: "12px",
+};
+
+const ratioTitleStyle: React.CSSProperties = {
+  fontSize: "13px",
+  fontWeight: 800,
+  color: "#334155",
+  marginBottom: "8px",
+};
+
+const ratioInputStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  border: "1px solid #d7dee8",
+  borderRadius: "12px",
+  padding: "10px 12px",
+  fontSize: "15px",
+  textAlign: "center",
+  background: "#ffffff",
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  width: "100%",
+  border: "none",
+  borderRadius: "16px",
+  padding: "14px 18px",
+  fontSize: "16px",
   fontWeight: 800,
   color: "#ffffff",
-  background: "linear-gradient(90deg, #4f8df3 0%, #5f9dff 100%)",
-  border: "none",
+  background: "linear-gradient(90deg, #2563eb 0%, #3b82f6 100%)",
+  boxShadow: "0 10px 24px rgba(37,99,235,0.18)",
+};
+
+const mutedHintStyle: React.CSSProperties = {
+  marginTop: "10px",
+  fontSize: "12px",
+  color: "#64748b",
+  lineHeight: 1.6,
+};
+
+const errorStyle: React.CSSProperties = {
+  marginTop: "12px",
   borderRadius: "14px",
-  cursor: "pointer",
-  boxShadow: "0 8px 18px rgba(37, 99, 235, 0.18)",
+  padding: "12px 14px",
+  background: "#fef2f2",
+  color: "#b91c1c",
+  border: "1px solid #fecaca",
+  fontSize: "13px",
+  lineHeight: 1.6,
 };
 
-const uploadFileNameStyle: React.CSSProperties = {
-  marginTop: "8px",
-  fontSize: "15px",
-  color: "#475569",
-  wordBreak: "break-all",
-  lineHeight: 1.4,
+const cardStyle: React.CSSProperties = {
+  background: "rgba(255,255,255,0.88)",
+  border: "1px solid rgba(226,232,240,0.9)",
+  borderRadius: "22px",
+  padding: "18px",
+  boxShadow: "0 8px 28px rgba(15,23,42,0.05)",
+  backdropFilter: "blur(10px)",
 };
 
-const selectorPanelStyle: React.CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #dbe7f5",
-  borderRadius: "20px",
-  padding: "16px",
-  marginBottom: "18px",
-};
-
-const selectorPanelHeaderStyle: React.CSSProperties = {
-  fontSize: "20px",
+const cardHeaderStyle: React.CSSProperties = {
+  fontSize: "22px",
   fontWeight: 800,
   color: "#0f172a",
-  marginBottom: "12px",
+  marginBottom: "14px",
 };
 
 const summaryInfoGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: "10px 12px",
-  padding: "14px 18px",
+  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+  gap: "12px",
 };
 
 const infoMiniCardStyle: React.CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #dbeafe",
-  borderRadius: "14px",
-  padding: "10px 12px",
-  boxShadow: "0 4px 12px rgba(37, 99, 235, 0.04)",
+  borderRadius: "16px",
+  padding: "14px",
+  border: "1px solid rgba(226,232,240,0.8)",
   minHeight: "92px",
   display: "flex",
   flexDirection: "column",
@@ -1381,180 +1658,101 @@ const infoMiniCardStyle: React.CSSProperties = {
 };
 
 const infoMiniLabelStyle: React.CSSProperties = {
-  fontSize: "13px",
+  fontSize: "12px",
   color: "#64748b",
-  marginBottom: "4px",
+  marginBottom: "6px",
   fontWeight: 700,
 };
 
 const infoMiniValueStyle: React.CSSProperties = {
   fontSize: "22px",
-  color: "#0f172a",
   fontWeight: 800,
 };
 
-const emptyHintStyle: React.CSSProperties = {
-  padding: "18px 20px",
-  fontSize: "18px",
+const emptyStateStyle: React.CSSProperties = {
+  fontSize: "14px",
+  lineHeight: 1.8,
   color: "#64748b",
-  lineHeight: 1.6,
-};
-
-const twoColGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: "16px",
-};
-
-const fieldLabelStyle: React.CSSProperties = {
-  fontSize: "18px",
-  fontWeight: 700,
-  color: "#1e293b",
-  marginBottom: "8px",
-};
-
-const sectionLabelStyle: React.CSSProperties = {
-  fontSize: "24px",
-  fontWeight: 800,
-  color: "#0f172a",
-  marginBottom: "10px",
-};
-
-const selectStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "13px 14px",
-  fontSize: "18px",
-  border: "2px solid #b8c7dc",
-  borderRadius: "14px",
-  backgroundColor: "#ffffff",
-  color: "#0f172a",
-  outline: "none",
-};
-
-const quotaPanelStyle: React.CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #dbe7f5",
-  borderRadius: "18px",
-  padding: "14px",
-  marginBottom: "14px",
-};
-
-const quotaInputStyle: React.CSSProperties = {
-  width: "140px",
-  padding: "12px 14px",
-  fontSize: "20px",
-  border: "2px solid #b8c7dc",
-  borderRadius: "14px",
-  backgroundColor: "#ffffff",
-  color: "#0f172a",
-  outline: "none",
-};
-
-const ratioPanelStyle: React.CSSProperties = {
-  background: "#f1f6fd",
-  border: "1px solid #d5e2f0",
-  borderRadius: "18px",
-  padding: "16px",
-};
-
-const ratioGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, 1fr)",
-  gap: "16px 18px",
-};
-
-const ratioItemStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "7px",
-};
-
-const ratioLabelStyle: React.CSSProperties = {
-  fontSize: "18px",
-  fontWeight: 800,
-  color: "#1e293b",
-};
-
-const ratioInputStyle: React.CSSProperties = {
-  width: "100%",
-  maxWidth: "120px",
-  padding: "11px",
-  fontSize: "20px",
-  border: "2px solid #b8c7dc",
-  borderRadius: "13px",
-  backgroundColor: "#ffffff",
-  textAlign: "center",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  width: "100%",
-  marginTop: "22px",
-  padding: "17px 22px",
-  fontSize: "28px",
-  fontWeight: 800,
-  color: "#ffffff",
-  background: "linear-gradient(90deg, #4f8df3 0%, #5f9dff 100%)",
-  border: "none",
-  borderRadius: "18px",
-  cursor: "pointer",
-  boxShadow: "0 12px 28px rgba(37, 99, 235, 0.22)",
-};
-
-const errorStyle: React.CSSProperties = {
-  marginTop: "16px",
-  color: "#b91c1c",
-  background: "#fee2e2",
-  border: "1px solid #fecaca",
-  padding: "12px 14px",
-  borderRadius: "12px",
-  fontSize: "16px",
+  padding: "8px 0 2px",
 };
 
 const summaryRowStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: "10px",
-  marginBottom: "12px",
+  gap: "12px",
 };
 
 const summaryBoxStyle: React.CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #dbe7f5",
-  borderRadius: "14px",
-  padding: "12px 14px",
-  minHeight: "90px",
+  border: "1px solid",
+  borderRadius: "18px",
+  padding: "16px",
+  minHeight: "110px",
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
 };
 
 const summaryLabelStyle: React.CSSProperties = {
-  fontSize: "14px",
-  color: "#64748b",
+  fontSize: "13px",
+  color: "#475569",
   marginBottom: "6px",
   fontWeight: 700,
 };
 
 const summaryValueStyle: React.CSSProperties = {
-  fontSize: "26px",
-  color: "#0f172a",
+  fontSize: "34px",
   fontWeight: 800,
+  lineHeight: 1.1,
 };
 
-const stepsBoxStyle: React.CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #dbe7f5",
-  borderRadius: "14px",
-  padding: "12px 14px",
-  marginBottom: "12px",
+const summarySubLabelStyle: React.CSSProperties = {
+  marginTop: "6px",
+  fontSize: "12px",
+  color: "#64748b",
 };
 
-const stepTextStyle: React.CSSProperties = {
-  fontSize: "15px",
-  color: "#1e293b",
-  marginBottom: "6px",
-  lineHeight: 1.5,
+const stepFlowBoxStyle: React.CSSProperties = {
+  marginTop: "14px",
+  padding: "14px",
+  background: "#fbfcfe",
+  border: "1px solid #e5ebf2",
+  borderRadius: "16px",
+};
+
+const stepFlowTitleStyle: React.CSSProperties = {
+  fontSize: "14px",
+  fontWeight: 800,
+  color: "#334155",
+  marginBottom: "10px",
+};
+
+const stepChipWrapStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
+};
+
+const flowItemStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "10px",
+  fontSize: "13px",
+  color: "#334155",
+  lineHeight: 1.7,
+};
+
+const flowIndexStyle: React.CSSProperties = {
+  width: "22px",
+  height: "22px",
+  borderRadius: "999px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+  background: "#eaf2ff",
+  color: "#2563eb",
+  fontWeight: 800,
+  fontSize: "12px",
 };
 
 const legendRowStyle: React.CSSProperties = {
@@ -1562,30 +1760,50 @@ const legendRowStyle: React.CSSProperties = {
   gap: "18px",
   alignItems: "center",
   flexWrap: "wrap",
-  marginBottom: "14px",
-  fontSize: "15px",
-  color: "#334155",
+  marginTop: "16px",
+  fontSize: "13px",
+  color: "#475569",
+};
+
+const legendItemStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "8px",
+};
+
+const chartsSectionTitleStyle: React.CSSProperties = {
+  fontSize: "22px",
+  fontWeight: 800,
+  color: "#0f172a",
+  paddingLeft: "4px",
 };
 
 const chartGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(460px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))",
   gap: "16px",
 };
 
 const chartCardStyle: React.CSSProperties = {
-  border: "1px solid #d7e3f1",
-  borderRadius: "18px",
+  borderRadius: "20px",
   padding: "16px",
-  background: "#ffffff",
-  boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
+  background: "rgba(255,255,255,0.92)",
+  border: "1px solid rgba(226,232,240,0.9)",
+  boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
+};
+
+const chartHeaderRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "12px",
 };
 
 const chartTitleStyle: React.CSSProperties = {
-  fontSize: "22px",
-  marginBottom: "10px",
+  margin: 0,
+  fontSize: "18px",
+  lineHeight: 1.2,
   color: "#0f172a",
-  textAlign: "center",
   fontWeight: 800,
 };
 
@@ -1593,32 +1811,49 @@ const chartStatsWrapStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: "8px",
-  marginBottom: "12px",
+  marginBottom: "14px",
 };
 
-const chartStatsRowStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "90px 1fr 1fr 1fr",
+const chartStatGroupStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
   gap: "12px",
   alignItems: "center",
-  fontSize: "16px",
-  color: "#334155",
 };
 
-const statsTagStyle: React.CSSProperties = {
+const chartStatTextStyle: React.CSSProperties = {
+  fontSize: "13px",
+  color: "#475569",
+  fontWeight: 600,
+};
+
+const statsTagBlueStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
+  borderRadius: "999px",
+  padding: "5px 10px",
   background: "#e0f2fe",
   color: "#0369a1",
-  borderRadius: "999px",
-  padding: "5px 9px",
   fontWeight: 800,
+  fontSize: "12px",
+};
+
+const statsTagGrayStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: "999px",
+  padding: "5px 10px",
+  background: "#f1f5f9",
+  color: "#475569",
+  fontWeight: 800,
+  fontSize: "12px",
 };
 
 const emptyChartStyle: React.CSSProperties = {
   color: "#64748b",
-  fontSize: "17px",
-  padding: "20px 0",
+  fontSize: "14px",
+  padding: "26px 0 20px",
   textAlign: "center",
 };
