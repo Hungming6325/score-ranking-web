@@ -1311,7 +1311,7 @@ const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
   background:
     "linear-gradient(180deg, #eef3f9 0%, #f6f8fb 38%, #f3f6fa 100%)",
-  padding: "24px",
+  padding: "8px 24px 24px",
   fontFamily:
     '"Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif',
   color: "#0f172a",
