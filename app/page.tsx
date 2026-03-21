@@ -1366,8 +1366,8 @@ const stepBarStyle: React.CSSProperties = {
   alignItems: "center",
   gap: "10px",
   overflowX: "auto",
-  padding: "16px 4px 0",
-  marginBottom: "20px",
+  padding: "6px 4px 0",
+  marginBottom: "10px",
 };
 
 const stepPillStyle: React.CSSProperties = {
