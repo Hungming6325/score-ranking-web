@@ -464,7 +464,7 @@ export default function Home() {
         accent="#3b82f6"
       />
       <UploadCard
-        title="全國成績檔案"
+        title="全國類群成績"
         fileName={parentFileName}
         buttonLabel="選擇全國成績檔案"
         onClick={() => parentFileInputRef.current?.click()}
@@ -472,7 +472,7 @@ export default function Home() {
         accent="#10b981"
       />
       <UploadCard
-        title="甄選成績檔"
+        title="學校甄選成績"
         fileName={selectionFileName}
         buttonLabel="選擇甄選成績檔"
         onClick={() => selectionFileInputRef.current?.click()}
