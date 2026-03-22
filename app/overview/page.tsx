@@ -279,7 +279,7 @@ export default function OverviewPage() {
     <div style={brandWrapStyle}>
       <div style={brandIconStyle}>📊</div>
       <div>
-        <h1 style={titleStyle}>同系科跨校招生倍率比較儀表板</h1>
+        <h1 style={titleStyle}>同系科跨校招生倍率</h1>
       </div>
     </div>
 
