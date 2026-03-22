@@ -441,9 +441,7 @@ onFocus={() => {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div style={emptyHintStyle}>可單獨使用系科搜尋。</div>
-              )}
+              ) : null}
 
               <div style={dividerStyle} />
 
@@ -512,9 +510,7 @@ onClick={() => {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div style={emptyHintStyle}>可單獨使用學校搜尋，或與系科搜尋同時搭配。</div>
-              )}
+              ) : null}
             </Panel>
           </aside>
 
