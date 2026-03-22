@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
+import Link from "next/link";
 
 type ParentRowData = {
   招生群類別?: string;
@@ -408,11 +409,17 @@ export default function Home() {
     <main style={pageStyle}>
       <div style={appShellStyle}>
 <header style={topHeaderStyle}>
-  <div style={brandWrapStyle}>
-    <div style={brandIconStyle}>🎓</div>
-    <div>
-      <h1 style={titleStyle}>甄選入學成績倍率篩選系統</h1>
+  <div style={headerInnerStyle}>
+    <div style={brandWrapStyle}>
+      <div style={brandIconStyle}>🎓</div>
+      <div>
+        <h1 style={titleStyle}>甄選入學成績倍率篩選系統</h1>
+      </div>
     </div>
+
+    <Link href="/overview" style={navButtonStyle}>
+      系科總覽 →
+    </Link>
   </div>
 </header>
 
@@ -1857,6 +1864,25 @@ const statsTagGrayStyle: React.CSSProperties = {
   color: "#475569",
   fontWeight: 800,
   fontSize: "12px",
+};
+
+const navButtonStyle: React.CSSProperties = {
+  textDecoration: "none",
+  borderRadius: "12px",
+  padding: "10px 16px",
+  fontSize: "14px",
+  fontWeight: 800,
+  color: "#2563eb",
+  background: "#eef4ff",
+  border: "1px solid #dbeafe",
+  cursor: "pointer",
+  transition: "all 0.15s ease",
+};
+const headerInnerStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  width: "100%",
 };
 
 const emptyChartStyle: React.CSSProperties = {
