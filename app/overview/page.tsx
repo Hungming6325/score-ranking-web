@@ -21,7 +21,9 @@ type ScoreField = "國文" | "英文" | "數學" | "專業一" | "專業二";
 const scoreFields: ScoreField[] = ["國文", "英文", "數學", "專業一", "專業二"];
 
 export default function OverviewPage() {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const departmentSearchRef = useRef<HTMLDivElement | null>(null);
+  const schoolSearchRef = useRef<HTMLDivElement | null>(null);
 
   const [rows, setRows] = useState<OverviewRow[]>([]);
   const [fileName, setFileName] = useState("");
@@ -29,10 +31,15 @@ export default function OverviewPage() {
 
   const [departmentKeyword, setDepartmentKeyword] = useState("");
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  const [schoolKeyword, setSchoolKeyword] = useState("");
+  const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
+
   const [selectedSchool, setSelectedSchool] = useState("");
   const [selectedDepartmentCard, setSelectedDepartmentCard] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
 
   const parseCsvFile = (file: File) => {
     Papa.parse<OverviewRow>(file, {
@@ -86,10 +93,13 @@ export default function OverviewPage() {
 
         setDepartmentKeyword("");
         setSelectedDepartments([]);
+        setSchoolKeyword("");
+        setSelectedSchools([]);
         setSelectedSchool("");
         setSelectedDepartmentCard("");
         setSelectedCategory("");
         setShowDepartmentDropdown(false);
+        setShowSchoolDropdown(false);
       },
       error: () => {
         setRows([]);
@@ -114,17 +124,39 @@ export default function OverviewPage() {
     const keyword = departmentKeyword.trim();
     if (!keyword) return departmentOptions.slice(0, 50);
 
-    return departmentOptions
-      .filter((item) => item.includes(keyword))
-      .slice(0, 50);
+    return departmentOptions.filter((item) => item.includes(keyword)).slice(0, 50);
   }, [departmentOptions, departmentKeyword]);
 
-  const departmentRows = useMemo(() => {
-    if (!selectedDepartments.length) return [];
-    return rows.filter((row) =>
-      selectedDepartments.includes(String(row.招生系科 ?? "").trim())
+  const schoolOptions = useMemo(() => {
+    return [...new Set(rows.map((r) => String(r.學校 ?? "").trim()).filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b, "zh-Hant")
     );
-  }, [rows, selectedDepartments]);
+  }, [rows]);
+
+  const filteredSchoolOptions = useMemo(() => {
+    const keyword = schoolKeyword.trim();
+    if (!keyword) return schoolOptions.slice(0, 50);
+
+    return schoolOptions.filter((item) => item.includes(keyword)).slice(0, 50);
+  }, [schoolOptions, schoolKeyword]);
+
+  const hasActiveFilters = selectedDepartments.length > 0 || selectedSchools.length > 0;
+
+  const filteredRows = useMemo(() => {
+    if (!hasActiveFilters) return [];
+
+    return rows.filter((row) => {
+      const department = String(row.招生系科 ?? "").trim();
+      const school = String(row.學校 ?? "").trim();
+
+      const departmentMatched =
+        selectedDepartments.length === 0 || selectedDepartments.includes(department);
+
+      const schoolMatched = selectedSchools.length === 0 || selectedSchools.includes(school);
+
+      return departmentMatched && schoolMatched;
+    });
+  }, [rows, selectedDepartments, selectedSchools, hasActiveFilters]);
 
   const groupedCards = useMemo(() => {
     const map = new Map<
@@ -137,7 +169,7 @@ export default function OverviewPage() {
       }
     >();
 
-    departmentRows.forEach((row) => {
+    filteredRows.forEach((row) => {
       const school = String(row.學校 ?? "").trim();
       const department = String(row.招生系科 ?? "").trim();
       const category = String(row.招生群類別 ?? "").trim();
@@ -173,32 +205,28 @@ export default function OverviewPage() {
         if (schoolCompare !== 0) return schoolCompare;
         return a.department.localeCompare(b.department, "zh-Hant");
       });
-  }, [departmentRows]);
+  }, [filteredRows]);
 
   const totalSchools = useMemo(() => {
-    return new Set(
-      departmentRows.map((row) => String(row.學校 ?? "").trim()).filter(Boolean)
-    ).size;
-  }, [departmentRows]);
+    return new Set(filteredRows.map((row) => String(row.學校 ?? "").trim()).filter(Boolean)).size;
+  }, [filteredRows]);
 
   const totalQuota = useMemo(() => {
-    return departmentRows.reduce((sum, row) => sum + toNumber(row.一般考生招生名額), 0);
-  }, [departmentRows]);
+    return filteredRows.reduce((sum, row) => sum + toNumber(row.一般考生招生名額), 0);
+  }, [filteredRows]);
 
   const selectedSchoolRows = useMemo(() => {
     if (!selectedSchool || !selectedDepartmentCard) return [];
-    return departmentRows.filter(
+    return filteredRows.filter(
       (row) =>
         String(row.學校 ?? "").trim() === selectedSchool &&
         String(row.招生系科 ?? "").trim() === selectedDepartmentCard
     );
-  }, [departmentRows, selectedSchool, selectedDepartmentCard]);
+  }, [filteredRows, selectedSchool, selectedDepartmentCard]);
 
   const selectedSchoolCategories = useMemo(() => {
     return [
-      ...new Set(
-        selectedSchoolRows.map((row) => String(row.招生群類別 ?? "").trim()).filter(Boolean)
-      ),
+      ...new Set(selectedSchoolRows.map((row) => String(row.招生群類別 ?? "").trim()).filter(Boolean)),
     ].sort((a, b) => a.localeCompare(b, "zh-Hant"));
   }, [selectedSchoolRows]);
 
@@ -216,7 +244,7 @@ export default function OverviewPage() {
   }, [selectedSchool, selectedDepartmentCard, selectedCategory, selectedSchoolRows]);
 
   useEffect(() => {
-    if (!selectedDepartments.length) {
+    if (!hasActiveFilters) {
       setSelectedSchool("");
       setSelectedDepartmentCard("");
       setSelectedCategory("");
@@ -231,8 +259,7 @@ export default function OverviewPage() {
     }
 
     const found = groupedCards.find(
-      (item) =>
-        item.school === selectedSchool && item.department === selectedDepartmentCard
+      (item) => item.school === selectedSchool && item.department === selectedDepartmentCard
     );
 
     if (!found) {
@@ -240,7 +267,32 @@ export default function OverviewPage() {
       setSelectedDepartmentCard(groupedCards[0].department);
       setSelectedCategory(groupedCards[0].categories[0] || "");
     }
-  }, [selectedDepartments, groupedCards, selectedSchool, selectedDepartmentCard]);
+  }, [hasActiveFilters, groupedCards, selectedSchool, selectedDepartmentCard]);
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    const target = event.target as Node;
+
+    if (
+      departmentSearchRef.current &&
+      !departmentSearchRef.current.contains(target)
+    ) {
+      setShowDepartmentDropdown(false);
+    }
+
+    if (
+      schoolSearchRef.current &&
+      !schoolSearchRef.current.contains(target)
+    ) {
+      setShowSchoolDropdown(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
 
   useEffect(() => {
     if (!selectedSchool || !selectedDepartmentCard) {
@@ -271,23 +323,36 @@ export default function OverviewPage() {
     setSelectedDepartments((prev) => prev.filter((x) => x !== item));
   };
 
+  const toggleSchool = (item: string) => {
+    setSelectedSchools((prev) => {
+      if (prev.includes(item)) {
+        return prev.filter((x) => x !== item);
+      }
+      return [...prev, item];
+    });
+  };
+
+  const removeSchool = (item: string) => {
+    setSelectedSchools((prev) => prev.filter((x) => x !== item));
+  };
+
   return (
     <main style={pageStyle}>
       <div style={appShellStyle}>
-<header style={topHeaderStyle}>
-  <div style={headerInnerStyle}>
-    <div style={brandWrapStyle}>
-      <div style={brandIconStyle}>📊</div>
-      <div>
-        <h1 style={titleStyle}>同系科跨校招生倍率</h1>
-      </div>
-    </div>
+        <header style={topHeaderStyle}>
+          <div style={headerInnerStyle}>
+            <div style={brandWrapStyle}>
+              <div style={brandIconStyle}>📊</div>
+              <div>
+                <h1 style={titleStyle}>同系科跨校招生倍率</h1>
+              </div>
+            </div>
 
-    <Link href="/" style={navButtonStyle}>
-      ← 返回篩選系統
-    </Link>
-  </div>
-</header>
+            <Link href="/" style={navButtonStyle}>
+              ← 返回篩選系統
+            </Link>
+          </div>
+        </header>
 
         <div style={layoutStyle}>
           <aside style={sidebarStyle}>
@@ -310,19 +375,24 @@ export default function OverviewPage() {
               {error ? <div style={errorStyle}>{error}</div> : null}
             </Panel>
 
-            <Panel title="系科搜尋">
+            <Panel title="條件搜尋">
               <div style={fieldBlockStyle}>
                 <label style={fieldLabelStyle}>搜尋招生系科</label>
-                <div style={searchWrapStyle}>
+                <div style={searchWrapStyle} ref={departmentSearchRef}>
                   <input
                     type="text"
                     value={departmentKeyword}
-                    placeholder="例如：護理、資訊、機械、電子工程"
-                    onChange={(e) => {
-                      setDepartmentKeyword(e.target.value);
-                      setShowDepartmentDropdown(true);
-                    }}
-                    onFocus={() => setShowDepartmentDropdown(true)}
+                    placeholder="例如：護理、資訊、電子工程"
+onChange={(e) => {
+  setDepartmentKeyword(e.target.value);
+  setShowDepartmentDropdown(true);
+  setShowSchoolDropdown(false);
+}}
+onFocus={() => {
+  setShowDepartmentDropdown(true);
+  setShowSchoolDropdown(false);
+}}
+
                     style={searchInputStyle}
                   />
                   {showDepartmentDropdown && filteredDepartmentOptions.length > 0 && (
@@ -339,7 +409,10 @@ export default function OverviewPage() {
                               color: isSelected ? "#1d4ed8" : "#0f172a",
                             }}
                             onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => toggleDepartment(item)}
+ onClick={() => {
+  toggleDepartment(item);
+  setShowDepartmentDropdown(false);
+}}
                           >
                             <span>{item}</span>
                             <span style={searchOptionCheckStyle}>
@@ -369,7 +442,78 @@ export default function OverviewPage() {
                   ))}
                 </div>
               ) : (
-                <div style={emptyHintStyle}>請先選擇一個或多個招生系科。</div>
+                <div style={emptyHintStyle}>可單獨使用系科搜尋。</div>
+              )}
+
+              <div style={dividerStyle} />
+
+              <div style={fieldBlockStyle}>
+                <label style={fieldLabelStyle}>搜尋學校</label>
+                <div style={searchWrapStyle} ref={schoolSearchRef}>
+                  <input
+                    type="text"
+                    value={schoolKeyword}
+                    placeholder="例如：長庚、國立、科技大學"
+onChange={(e) => {
+  setSchoolKeyword(e.target.value);
+  setShowSchoolDropdown(true);
+  setShowDepartmentDropdown(false);
+}}
+onFocus={() => {
+  setShowSchoolDropdown(true);
+  setShowDepartmentDropdown(false);
+}}
+
+                    style={searchInputStyle}
+                  />
+                  {showSchoolDropdown && filteredSchoolOptions.length > 0 && (
+                    <div style={searchDropdownStyle}>
+                      {filteredSchoolOptions.map((item) => {
+                        const isSelected = selectedSchools.includes(item);
+                        return (
+                          <button
+                            key={item}
+                            type="button"
+                            style={{
+                              ...searchOptionStyle,
+                              background: isSelected ? "#eff6ff" : "#ffffff",
+                              color: isSelected ? "#1d4ed8" : "#0f172a",
+                            }}
+                            onMouseDown={(e) => e.preventDefault()}
+onClick={() => {
+  toggleSchool(item);
+  setShowSchoolDropdown(false);
+}}
+                          >
+                            <span>{item}</span>
+                            <span style={searchOptionCheckStyle}>
+                              {isSelected ? "已選取" : "加入"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedSchools.length > 0 ? (
+                <div style={selectedChipWrapStyle}>
+                  {selectedSchools.map((item) => (
+                    <div key={item} style={selectedChipStyle}>
+                      <span>{item}</span>
+                      <button
+                        type="button"
+                        style={selectedChipRemoveStyle}
+                        onClick={() => removeSchool(item)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={emptyHintStyle}>可單獨使用學校搜尋，或與系科搜尋同時搭配。</div>
               )}
             </Panel>
           </aside>
@@ -409,8 +553,8 @@ export default function OverviewPage() {
                 </div>
               }
             >
-              {!selectedDepartments.length ? (
-                <div style={emptyStateStyle}>先在左側選擇系科，這裡會列出對應學校與系名。</div>
+              {!hasActiveFilters ? (
+                <div style={emptyStateStyle}>請先在左側選擇招生系科或學校。</div>
               ) : groupedCards.length === 0 ? (
                 <div style={emptyStateStyle}>查無符合資料。</div>
               ) : (
@@ -507,7 +651,9 @@ export default function OverviewPage() {
 
             <div style={detailGridStyle}>
               <Card title="群類選擇">
-                {!selectedSchool ? (
+                {!hasActiveFilters ? (
+                  <div style={emptyStateStyle}>請先選擇招生系科或學校。</div>
+                ) : !selectedSchool ? (
                   <div style={emptyStateStyle}>請先選擇學校與系科。</div>
                 ) : (
                   <>
@@ -544,7 +690,9 @@ export default function OverviewPage() {
               </Card>
 
               <Card title="群類倍率明細">
-                {!selectedDetail ? (
+                {!hasActiveFilters ? (
+                  <div style={emptyStateStyle}>請先選擇招生系科或學校。</div>
+                ) : !selectedDetail ? (
                   <div style={emptyStateStyle}>請先選擇群類別。</div>
                 ) : (
                   <>
@@ -581,8 +729,6 @@ export default function OverviewPage() {
                         );
                       })}
                     </div>
-
-                    
                   </>
                 )}
               </Card>
@@ -1077,6 +1223,12 @@ const emptyStateStyle: React.CSSProperties = {
   padding: "8px 0 2px",
 };
 
+const dividerStyle: React.CSSProperties = {
+  height: "1px",
+  background: "#e2e8f0",
+  margin: "14px 0",
+};
+
 const schoolGridStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
@@ -1278,33 +1430,4 @@ const scoreCardLabelStyle: React.CSSProperties = {
 const scoreCardValueStyle: React.CSSProperties = {
   fontSize: "24px",
   fontWeight: 800,
-};
-
-const tableWrapStyle: React.CSSProperties = {
-  overflowX: "auto",
-};
-
-const tableStyle: React.CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  background: "#ffffff",
-  borderRadius: "14px",
-  overflow: "hidden",
-};
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "12px 14px",
-  background: "#f8fafc",
-  borderBottom: "1px solid #e2e8f0",
-  fontSize: "13px",
-  fontWeight: 800,
-  color: "#334155",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "12px 14px",
-  borderBottom: "1px solid #eef2f7",
-  fontSize: "14px",
-  color: "#334155",
 };
