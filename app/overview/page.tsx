@@ -582,42 +582,7 @@ export default function OverviewPage() {
                       })}
                     </div>
 
-                    <div style={tableWrapStyle}>
-                      <table style={tableStyle}>
-                        <thead>
-                          <tr>
-                            <th style={thStyle}>欄位</th>
-                            <th style={thStyle}>數值</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td style={tdStyle}>學校</td>
-                            <td style={tdStyle}>{selectedSchool}</td>
-                          </tr>
-                          <tr>
-                            <td style={tdStyle}>招生系科</td>
-                            <td style={tdStyle}>{selectedDepartmentCard}</td>
-                          </tr>
-                          <tr>
-                            <td style={tdStyle}>招生群類別</td>
-                            <td style={tdStyle}>{selectedCategory}</td>
-                          </tr>
-                          <tr>
-                            <td style={tdStyle}>一般考生招生名額</td>
-                            <td style={tdStyle}>
-                              {toNumber(selectedDetail.一般考生招生名額).toLocaleString()}
-                            </td>
-                          </tr>
-                          {scoreFields.map((field) => (
-                            <tr key={field}>
-                              <td style={tdStyle}>{field}</td>
-                              <td style={tdStyle}>{displayValue(selectedDetail[field])}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    
                   </>
                 )}
               </Card>
