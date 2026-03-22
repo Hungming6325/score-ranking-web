@@ -456,7 +456,7 @@ export default function Home() {
   <Panel title="資料上傳">
     <div style={stackStyle}>
       <UploadCard
-        title="倍率設定檔"
+        title="學校倍率設定"
         fileName={configFileName}
         buttonLabel="選擇倍率設定檔"
         onClick={() => configFileInputRef.current?.click()}
