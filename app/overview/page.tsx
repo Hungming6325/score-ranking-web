@@ -423,143 +423,161 @@ useEffect(() => {
               {error ? <div style={errorStyle}>{error}</div> : null}
             </Panel>
 
-            <Panel title="條件搜尋">
-              <div style={fieldBlockStyle}>
-                <label style={fieldLabelStyle}>搜尋招生系科</label>
-                <div style={searchWrapStyle} ref={departmentSearchRef}>
-                  <input
-                    type="text"
-                    value={departmentKeyword}
-                    placeholder="例如：護理、資訊、電子工程"
-onChange={(e) => {
-  setDepartmentKeyword(e.target.value);
-  setShowDepartmentDropdown(true);
-  setShowSchoolDropdown(false);
-}}
-onFocus={() => {
-  setShowDepartmentDropdown(true);
-  setShowSchoolDropdown(false);
-}}
+           <Panel title="條件搜尋">
+  <div style={fieldBlockStyle}>
+    <label style={fieldLabelStyle}>搜尋招生系科</label>
+    <div style={searchWrapStyle} ref={departmentSearchRef}>
+      <input
+        type="text"
+        value={departmentKeyword}
+        placeholder="例如：護理、資訊、電子工程"
+        onChange={(e) => {
+          setDepartmentKeyword(e.target.value);
+          setShowDepartmentDropdown(true);
+          setShowSchoolDropdown(false);
+        }}
+        onFocus={() => {
+          setShowDepartmentDropdown(true);
+          setShowSchoolDropdown(false);
+        }}
+        style={searchInputStyle}
+      />
 
-                    style={searchInputStyle}
-                  />
-                  {showDepartmentDropdown && filteredDepartmentOptions.length > 0 && (
-                    <div style={searchDropdownStyle}>
-                      {filteredDepartmentOptions.map((item) => {
-                        const isSelected = selectedDepartments.includes(item);
-                        return (
-                          <button
-                            key={item}
-                            type="button"
-                            style={{
-                              ...searchOptionStyle,
-                              background: isSelected ? "#eff6ff" : "#ffffff",
-                              color: isSelected ? "#1d4ed8" : "#0f172a",
-                            }}
-                            onMouseDown={(e) => e.preventDefault()}
- onClick={() => {
-  toggleDepartment(item);
-  setShowDepartmentDropdown(false);
-}}
-                          >
-                            <span>{item}</span>
-                            <span style={searchOptionCheckStyle}>
-                              {isSelected ? "已選取" : "加入"}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+      {showDepartmentDropdown && filteredDepartmentOptions.length > 0 && (
+        <div style={searchDropdownStyle}>
+          {filteredDepartmentOptions.map((item) => {
+            const isSelected = selectedDepartments.includes(item);
 
-              {selectedDepartments.length > 0 ? (
-                <div style={selectedChipWrapStyle}>
-                  {selectedDepartments.map((item) => (
-                    <div key={item} style={selectedChipStyle}>
-                      <span>{item}</span>
-                      <button
-                        type="button"
-                        style={selectedChipRemoveStyle}
-                        onClick={() => removeDepartment(item)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+            return (
+              <button
+                key={item}
+                type="button"
+                style={{
+                  ...searchOptionStyle,
+                  background: isSelected ? "#eff6ff" : "#ffffff",
+                  color: "#0f172a",
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  toggleDepartment(item);
+                }}
+              >
+                <span
+                  style={{
+                    ...checkboxStyle,
+                    background: isSelected ? "#2563eb" : "#ffffff",
+                    borderColor: isSelected ? "#2563eb" : "#cbd5e1",
+                    color: isSelected ? "#ffffff" : "transparent",
+                  }}
+                >
+                  ✓
+                </span>
 
-              <div style={dividerStyle} />
+                <span>{item}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
 
-              <div style={fieldBlockStyle}>
-                <label style={fieldLabelStyle}>搜尋學校</label>
-                <div style={searchWrapStyle} ref={schoolSearchRef}>
-                  <input
-                    type="text"
-                    value={schoolKeyword}
-                    placeholder="例如：長庚、國立、科技大學"
-onChange={(e) => {
-  setSchoolKeyword(e.target.value);
-  setShowSchoolDropdown(true);
-  setShowDepartmentDropdown(false);
-}}
-onFocus={() => {
-  setShowSchoolDropdown(true);
-  setShowDepartmentDropdown(false);
-}}
+  {selectedDepartments.length > 0 ? (
+    <div style={selectedChipWrapStyle}>
+      {selectedDepartments.map((item) => (
+        <div key={item} style={selectedChipStyle}>
+          <span>{item}</span>
+          <button
+            type="button"
+            style={selectedChipRemoveStyle}
+            onClick={() => removeDepartment(item)}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  ) : null}
 
-                    style={searchInputStyle}
-                  />
-                  {showSchoolDropdown && filteredSchoolOptions.length > 0 && (
-                    <div style={searchDropdownStyle}>
-                      {filteredSchoolOptions.map((item) => {
-                        const isSelected = selectedSchools.includes(item);
-                        return (
-                          <button
-                            key={item}
-                            type="button"
-                            style={{
-                              ...searchOptionStyle,
-                              background: isSelected ? "#eff6ff" : "#ffffff",
-                              color: isSelected ? "#1d4ed8" : "#0f172a",
-                            }}
-                            onMouseDown={(e) => e.preventDefault()}
-onClick={() => {
-  toggleSchool(item);
-  setShowSchoolDropdown(false);
-}}
-                          >
-                            <span>{item}</span>
-                            <span style={searchOptionCheckStyle}>
-                              {isSelected ? "已選取" : "加入"}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+  <div style={dividerStyle} />
 
-              {selectedSchools.length > 0 ? (
-                <div style={selectedChipWrapStyle}>
-                  {selectedSchools.map((item) => (
-                    <div key={item} style={selectedChipStyle}>
-                      <span>{item}</span>
-                      <button
-                        type="button"
-                        style={selectedChipRemoveStyle}
-                        onClick={() => removeSchool(item)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </Panel>
+  <div style={fieldBlockStyle}>
+    <label style={fieldLabelStyle}>搜尋學校</label>
+    <div style={searchWrapStyle} ref={schoolSearchRef}>
+      <input
+        type="text"
+        value={schoolKeyword}
+        placeholder="例如：長庚、國立、科技大學"
+        onChange={(e) => {
+          setSchoolKeyword(e.target.value);
+          setShowSchoolDropdown(true);
+          setShowDepartmentDropdown(false);
+        }}
+        onFocus={() => {
+          setShowSchoolDropdown(true);
+          setShowDepartmentDropdown(false);
+        }}
+        style={searchInputStyle}
+      />
+
+      {showSchoolDropdown && filteredSchoolOptions.length > 0 && (
+        <div style={searchDropdownStyle}>
+          {filteredSchoolOptions.map((item) => {
+            const isSelected = selectedSchools.includes(item);
+
+            return (
+              <button
+                key={item}
+                type="button"
+                style={{
+                  ...searchOptionStyle,
+                  background: isSelected ? "#eff6ff" : "#ffffff",
+                  color: "#0f172a",
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  toggleSchool(item);
+                }}
+              >
+                <span
+                  style={{
+                    ...checkboxStyle,
+                    background: isSelected ? "#2563eb" : "#ffffff",
+                    borderColor: isSelected ? "#2563eb" : "#cbd5e1",
+                    color: isSelected ? "#ffffff" : "transparent",
+                  }}
+                >
+                  ✓
+                </span>
+
+                <span>{item}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+
+  {selectedSchools.length > 0 ? (
+    <div style={selectedChipWrapStyle}>
+      {selectedSchools.map((item) => (
+        <div key={item} style={selectedChipStyle}>
+          <span>{item}</span>
+          <button
+            type="button"
+            style={selectedChipRemoveStyle}
+            onClick={() => removeSchool(item)}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  ) : null}
+</Panel> 
+
+
           </aside>
 
           <section style={contentStyle}>
@@ -1018,8 +1036,8 @@ const cardHeaderStyle: React.CSSProperties = {
 
 const cardTitleRowStyle: React.CSSProperties = {
   display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
+  justifyContent: "space-between", 
+  alignItems: "center",
   gap: "12px",
   flexWrap: "wrap",
   width: "100%",
@@ -1030,6 +1048,7 @@ const overviewMetricCardWrapStyle: React.CSSProperties = {
   gap: "12px",
   flexWrap: "wrap",
   alignItems: "stretch",
+  justifyContent: "flex-start",
 };
 
 const overviewMetricCardStyle: React.CSSProperties = {
@@ -1199,27 +1218,6 @@ const navButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const searchOptionStyle: React.CSSProperties = {
-  width: "100%",
-  textAlign: "left",
-  border: "none",
-  borderRadius: "10px",
-  padding: "10px 12px",
-  fontSize: "14px",
-  cursor: "pointer",
-  background: "#ffffff",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "10px",
-};
-
-const searchOptionCheckStyle: React.CSSProperties = {
-  fontSize: "12px",
-  fontWeight: 800,
-  opacity: 0.8,
-  flexShrink: 0,
-};
 
 const selectedChipWrapStyle: React.CSSProperties = {
   display: "flex",
@@ -1323,16 +1321,16 @@ const schoolRightMetaStyle: React.CSSProperties = {
 
 const schoolBadgeStyle: React.CSSProperties = {
   borderRadius: "999px",
-  padding: "6px 10px",
-  fontSize: "12px",
+  padding: "8px 12px",
+  fontSize: "14px",
   fontWeight: 800,
   flexShrink: 0,
 };
 
 const schoolQuotaBadgeStyle: React.CSSProperties = {
   borderRadius: "999px",
-  padding: "6px 10px",
-  fontSize: "12px",
+  padding: "8px 12px",
+  fontSize: "14px",
   fontWeight: 800,
   background: "#f8fafc",
   border: "1px solid #e2e8f0",
@@ -1348,8 +1346,8 @@ const categoryChipWrapStyle: React.CSSProperties = {
 
 const categoryChipButtonStyle: React.CSSProperties = {
   borderRadius: "999px",
-  padding: "6px 10px",
-  fontSize: "12px",
+  padding: "8px 12px",
+  fontSize: "14px",
   fontWeight: 700,
   border: "1px solid #e2e8f0",
   background: "#f8fafc",
@@ -1461,6 +1459,34 @@ const scoreCardStyle: React.CSSProperties = {
   justifyContent: "center",
 };
 
+const checkboxStyle: React.CSSProperties = {
+  width: "18px",
+  height: "18px",
+  borderRadius: "4px",
+  border: "2px solid #cbd5e1",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "12px",
+  fontWeight: 800,
+  flexShrink: 0,
+  transition: "all 0.15s ease",
+};
+
+const searchOptionStyle: React.CSSProperties = {
+  width: "100%",
+  textAlign: "left",
+  border: "none",
+  borderRadius: "10px",
+  padding: "10px 12px",
+  fontSize: "14px",
+  cursor: "pointer",
+  background: "#ffffff",
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  transition: "background 0.15s",
+};
 const scoreCardLabelStyle: React.CSSProperties = {
   fontSize: "12px",
   color: "#64748b",
