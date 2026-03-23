@@ -1464,7 +1464,7 @@ const brandIconStyle: React.CSSProperties = {
 
 const titleStyle: React.CSSProperties = {
   margin: 0,
-  fontSize: "32px",
+  fontSize: "30px",
   lineHeight: 1.1,
   fontWeight: 800,
   letterSpacing: "-0.03em",
@@ -1905,7 +1905,7 @@ const chartGridStyle: React.CSSProperties = {
 
 const chartCardStyle: React.CSSProperties = {
   borderRadius: "20px",
-  padding: "16px",
+  padding: "28px",
   background: "rgba(255,255,255,0.92)",
   border: "1px solid rgba(226,232,240,0.9)",
   boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
@@ -1929,21 +1929,22 @@ const chartTitleStyle: React.CSSProperties = {
 const chartStatsWrapStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "8px",
-  marginBottom: "14px",
+  gap: "18px",
+  marginBottom: "28px",
 };
 
 const chartStatGroupStyle: React.CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
-  gap: "12px",
+  gap: "30px",
   alignItems: "center",
 };
 
 const chartStatTextStyle: React.CSSProperties = {
-  fontSize: "13px",
+  fontSize: "18px",
   color: "#475569",
-  fontWeight: 600,
+  fontWeight: 800,
+    lineHeight: 1.7,
 };
 
 const statsTagBlueStyle: React.CSSProperties = {
@@ -1955,7 +1956,8 @@ const statsTagBlueStyle: React.CSSProperties = {
   background: "#e0f2fe",
   color: "#0369a1",
   fontWeight: 800,
-  fontSize: "12px",
+  fontSize: "22px",
+  minWidth: "84px",
 };
 
 const statsTagGrayStyle: React.CSSProperties = {
@@ -1967,7 +1969,8 @@ const statsTagGrayStyle: React.CSSProperties = {
   background: "#f1f5f9",
   color: "#475569",
   fontWeight: 800,
-  fontSize: "12px",
+  fontSize: "22px",
+  minWidth: "84px",
 };
 
 const navButtonStyle: React.CSSProperties = {

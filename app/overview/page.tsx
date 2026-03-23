@@ -17,18 +17,38 @@ type OverviewRow = {
 };
 
 type ScoreField = "國文" | "英文" | "數學" | "專業一" | "專業二";
+type FilterType = "department" | "category" | "school";
 
 const scoreFields: ScoreField[] = ["國文", "英文", "數學", "專業一", "專業二"];
 
 export default function OverviewPage() {
-   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const departmentSearchRef = useRef<HTMLDivElement | null>(null);
+  const categorySearchRef = useRef<HTMLDivElement | null>(null);
   const schoolSearchRef = useRef<HTMLDivElement | null>(null);
 
   const [rows, setRows] = useState<OverviewRow[]>([]);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
-useEffect(() => {
+
+  const [departmentKeyword, setDepartmentKeyword] = useState("");
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+
+  const [categoryKeyword, setCategoryKeyword] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  const [schoolKeyword, setSchoolKeyword] = useState("");
+  const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
+
+  const [selectedSchool, setSelectedSchool] = useState("");
+  const [selectedDepartmentCard, setSelectedDepartmentCard] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+
+  useEffect(() => {
     const loadCsv = async () => {
       try {
         const res = await fetch("/114全國一階篩選倍率.csv");
@@ -37,22 +57,8 @@ useEffect(() => {
         Papa.parse<OverviewRow>(text, {
           header: true,
           skipEmptyLines: true,
-          complete: (res) => {
-            const cleaned = (res.data || [])
-              .filter((row) =>
-                Object.values(row).some((v) => String(v ?? "").trim() !== "")
-              )
-              .map((row) => ({
-                學校: String(row.學校 ?? "").trim(),
-                招生系科: String(row.招生系科 ?? "").trim(),
-                招生群類別: String(row.招生群類別 ?? "").trim(),
-                一般考生招生名額: row.一般考生招生名額 ?? "",
-                國文: row.國文 ?? "",
-                英文: row.英文 ?? "",
-                數學: row.數學 ?? "",
-                專業一: row.專業一 ?? "",
-                專業二: row.專業二 ?? "",
-              }));
+          complete: (result) => {
+            const cleaned = normalizeRows(result.data || []);
 
             if (!cleaned.length) {
               setRows([]);
@@ -78,36 +84,12 @@ useEffect(() => {
     loadCsv();
   }, []);
 
-  const [departmentKeyword, setDepartmentKeyword] = useState("");
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-  const [schoolKeyword, setSchoolKeyword] = useState("");
-  const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
-
-  const [selectedSchool, setSelectedSchool] = useState("");
-  const [selectedDepartmentCard, setSelectedDepartmentCard] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-
-  const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
-  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
-
   const parseCsvFile = (file: File) => {
     Papa.parse<OverviewRow>(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (res) => {
-        const cleaned = (res.data || [])
-          .filter((row) => Object.values(row).some((v) => String(v ?? "").trim() !== ""))
-          .map((row) => ({
-            學校: String(row.學校 ?? "").trim(),
-            招生系科: String(row.招生系科 ?? "").trim(),
-            招生群類別: String(row.招生群類別 ?? "").trim(),
-            一般考生招生名額: row.一般考生招生名額 ?? "",
-            國文: row.國文 ?? "",
-            英文: row.英文 ?? "",
-            數學: row.數學 ?? "",
-            專業一: row.專業一 ?? "",
-            專業二: row.專業二 ?? "",
-          }));
+      complete: (result) => {
+        const cleaned = normalizeRows(result.data || []);
 
         if (!cleaned.length) {
           setRows([]);
@@ -142,12 +124,19 @@ useEffect(() => {
 
         setDepartmentKeyword("");
         setSelectedDepartments([]);
+
+        setCategoryKeyword("");
+        setSelectedCategories([]);
+
         setSchoolKeyword("");
         setSelectedSchools([]);
+
         setSelectedSchool("");
         setSelectedDepartmentCard("");
         setSelectedCategory("");
+
         setShowDepartmentDropdown(false);
+        setShowCategoryDropdown(false);
         setShowSchoolDropdown(false);
       },
       error: () => {
@@ -163,49 +152,152 @@ useEffect(() => {
     parseCsvFile(file);
   };
 
-  const departmentOptions = useMemo(() => {
-    return [...new Set(rows.map((r) => String(r.招生系科 ?? "").trim()).filter(Boolean))].sort(
-      (a, b) => a.localeCompare(b, "zh-Hant")
-    );
+  const allDepartmentOptions = useMemo(() => {
+    return uniqueSorted(rows.map((r) => String(r.招生系科 ?? "").trim()).filter(Boolean));
   }, [rows]);
 
-  const filteredDepartmentOptions = useMemo(() => {
-    const keyword = departmentKeyword.trim();
-    if (!keyword) return departmentOptions.slice(0, 50);
-
-    return departmentOptions.filter((item) => item.includes(keyword)).slice(0, 50);
-  }, [departmentOptions, departmentKeyword]);
-
-  const schoolOptions = useMemo(() => {
-    return [...new Set(rows.map((r) => String(r.學校 ?? "").trim()).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b, "zh-Hant")
-    );
+  const allCategoryOptions = useMemo(() => {
+    return uniqueSorted(rows.map((r) => String(r.招生群類別 ?? "").trim()).filter(Boolean));
   }, [rows]);
 
-  const filteredSchoolOptions = useMemo(() => {
-    const keyword = schoolKeyword.trim();
-    if (!keyword) return schoolOptions.slice(0, 50);
+  const allSchoolOptions = useMemo(() => {
+    return uniqueSorted(rows.map((r) => String(r.學校 ?? "").trim()).filter(Boolean));
+  }, [rows]);
 
-    return schoolOptions.filter((item) => item.includes(keyword)).slice(0, 50);
-  }, [schoolOptions, schoolKeyword]);
+  const rowsForDepartmentOptions = useMemo(() => {
+    return rows.filter((row) => {
+      const category = String(row.招生群類別 ?? "").trim();
+      const school = String(row.學校 ?? "").trim();
 
-  const hasActiveFilters = selectedDepartments.length > 0 || selectedSchools.length > 0;
+      const categoryMatched =
+        selectedCategories.length === 0 || selectedCategories.includes(category);
+      const schoolMatched =
+        selectedSchools.length === 0 || selectedSchools.includes(school);
 
-  const filteredRows = useMemo(() => {
-    if (!hasActiveFilters) return [];
+      return categoryMatched && schoolMatched;
+    });
+  }, [rows, selectedCategories, selectedSchools]);
 
+  const rowsForCategoryOptions = useMemo(() => {
     return rows.filter((row) => {
       const department = String(row.招生系科 ?? "").trim();
       const school = String(row.學校 ?? "").trim();
 
       const departmentMatched =
         selectedDepartments.length === 0 || selectedDepartments.includes(department);
-
-      const schoolMatched = selectedSchools.length === 0 || selectedSchools.includes(school);
+      const schoolMatched =
+        selectedSchools.length === 0 || selectedSchools.includes(school);
 
       return departmentMatched && schoolMatched;
     });
-  }, [rows, selectedDepartments, selectedSchools, hasActiveFilters]);
+  }, [rows, selectedDepartments, selectedSchools]);
+
+  const rowsForSchoolOptions = useMemo(() => {
+    return rows.filter((row) => {
+      const department = String(row.招生系科 ?? "").trim();
+      const category = String(row.招生群類別 ?? "").trim();
+
+      const departmentMatched =
+        selectedDepartments.length === 0 || selectedDepartments.includes(department);
+      const categoryMatched =
+        selectedCategories.length === 0 || selectedCategories.includes(category);
+
+      return departmentMatched && categoryMatched;
+    });
+  }, [rows, selectedDepartments, selectedCategories]);
+
+  const departmentOptions = useMemo(() => {
+    return uniqueSorted(
+      rowsForDepartmentOptions
+        .map((r) => String(r.招生系科 ?? "").trim())
+        .filter(Boolean)
+    );
+  }, [rowsForDepartmentOptions]);
+
+  const categoryOptions = useMemo(() => {
+    return uniqueSorted(
+      rowsForCategoryOptions
+        .map((r) => String(r.招生群類別 ?? "").trim())
+        .filter(Boolean)
+    );
+  }, [rowsForCategoryOptions]);
+
+  const schoolOptions = useMemo(() => {
+    return uniqueSorted(
+      rowsForSchoolOptions
+        .map((r) => String(r.學校 ?? "").trim())
+        .filter(Boolean)
+    );
+  }, [rowsForSchoolOptions]);
+
+useEffect(() => {
+  setSelectedDepartments((prev) => {
+    const next = prev.filter((item) => departmentOptions.includes(item));
+    return isSameStringArray(prev, next) ? prev : next;
+  });
+}, [departmentOptions]);
+
+useEffect(() => {
+  setSelectedCategories((prev) => {
+    const next = prev.filter((item) => categoryOptions.includes(item));
+    return isSameStringArray(prev, next) ? prev : next;
+  });
+}, [categoryOptions]);
+
+useEffect(() => {
+  setSelectedSchools((prev) => {
+    const next = prev.filter((item) => schoolOptions.includes(item));
+    return isSameStringArray(prev, next) ? prev : next;
+  });
+}, [schoolOptions]);
+
+  const filteredDepartmentOptions = useMemo(() => {
+    const keyword = departmentKeyword.trim();
+    const base = keyword
+      ? departmentOptions.filter((item) => item.includes(keyword))
+      : departmentOptions;
+
+    return sortOptionsWithSelectedFirst(base, selectedDepartments).slice(0, 100);
+  }, [departmentOptions, departmentKeyword, selectedDepartments]);
+
+  const filteredCategoryOptions = useMemo(() => {
+    const keyword = categoryKeyword.trim();
+    const base = keyword
+      ? categoryOptions.filter((item) => item.includes(keyword))
+      : categoryOptions;
+
+    return sortOptionsWithSelectedFirst(base, selectedCategories).slice(0, 100);
+  }, [categoryOptions, categoryKeyword, selectedCategories]);
+
+  const filteredSchoolOptions = useMemo(() => {
+    const keyword = schoolKeyword.trim();
+    const base = keyword ? schoolOptions.filter((item) => item.includes(keyword)) : schoolOptions;
+
+    return sortOptionsWithSelectedFirst(base, selectedSchools).slice(0, 100);
+  }, [schoolOptions, schoolKeyword, selectedSchools]);
+
+  const hasActiveFilters =
+    selectedDepartments.length > 0 ||
+    selectedCategories.length > 0 ||
+    selectedSchools.length > 0;
+
+  const filteredRows = useMemo(() => {
+    if (!hasActiveFilters) return [];
+
+    return rows.filter((row) => {
+      const department = String(row.招生系科 ?? "").trim();
+      const category = String(row.招生群類別 ?? "").trim();
+      const school = String(row.學校 ?? "").trim();
+
+      const departmentMatched =
+        selectedDepartments.length === 0 || selectedDepartments.includes(department);
+      const categoryMatched =
+        selectedCategories.length === 0 || selectedCategories.includes(category);
+      const schoolMatched = selectedSchools.length === 0 || selectedSchools.includes(school);
+
+      return departmentMatched && categoryMatched && schoolMatched;
+    });
+  }, [rows, selectedDepartments, selectedCategories, selectedSchools, hasActiveFilters]);
 
   const groupedCards = useMemo(() => {
     const map = new Map<
@@ -266,6 +358,7 @@ useEffect(() => {
 
   const selectedSchoolRows = useMemo(() => {
     if (!selectedSchool || !selectedDepartmentCard) return [];
+
     return filteredRows.filter(
       (row) =>
         String(row.學校 ?? "").trim() === selectedSchool &&
@@ -274,9 +367,11 @@ useEffect(() => {
   }, [filteredRows, selectedSchool, selectedDepartmentCard]);
 
   const selectedSchoolCategories = useMemo(() => {
-    return [
-      ...new Set(selectedSchoolRows.map((row) => String(row.招生群類別 ?? "").trim()).filter(Boolean)),
-    ].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+    return uniqueSorted(
+      selectedSchoolRows
+        .map((row) => String(row.招生群類別 ?? "").trim())
+        .filter(Boolean)
+    );
   }, [selectedSchoolRows]);
 
   const selectedDetail = useMemo(() => {
@@ -317,31 +412,6 @@ useEffect(() => {
       setSelectedCategory(groupedCards[0].categories[0] || "");
     }
   }, [hasActiveFilters, groupedCards, selectedSchool, selectedDepartmentCard]);
-useEffect(() => {
-  const handleClickOutside = (event: MouseEvent) => {
-    const target = event.target as Node;
-
-    if (
-      departmentSearchRef.current &&
-      !departmentSearchRef.current.contains(target)
-    ) {
-      setShowDepartmentDropdown(false);
-    }
-
-    if (
-      schoolSearchRef.current &&
-      !schoolSearchRef.current.contains(target)
-    ) {
-      setShowSchoolDropdown(false);
-    }
-  };
-
-  document.addEventListener("mousedown", handleClickOutside);
-
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, []);
 
   useEffect(() => {
     if (!selectedSchool || !selectedDepartmentCard) {
@@ -359,30 +429,76 @@ useEffect(() => {
     }
   }, [selectedSchool, selectedDepartmentCard, selectedSchoolCategories, selectedCategory]);
 
-  const toggleDepartment = (item: string) => {
-    setSelectedDepartments((prev) => {
-      if (prev.includes(item)) {
-        return prev.filter((x) => x !== item);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (departmentSearchRef.current && !departmentSearchRef.current.contains(target)) {
+        setShowDepartmentDropdown(false);
       }
-      return [...prev, item];
-    });
+
+      if (categorySearchRef.current && !categorySearchRef.current.contains(target)) {
+        setShowCategoryDropdown(false);
+      }
+
+      if (schoolSearchRef.current && !schoolSearchRef.current.contains(target)) {
+        setShowSchoolDropdown(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+    };
+  }, []);
+
+  const toggleDepartment = (item: string) => {
+    setSelectedDepartments((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+    );
   };
 
   const removeDepartment = (item: string) => {
     setSelectedDepartments((prev) => prev.filter((x) => x !== item));
   };
 
+  const toggleCategoryFilter = (item: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+    );
+  };
+
+  const removeCategoryFilter = (item: string) => {
+    setSelectedCategories((prev) => prev.filter((x) => x !== item));
+  };
+
   const toggleSchool = (item: string) => {
-    setSelectedSchools((prev) => {
-      if (prev.includes(item)) {
-        return prev.filter((x) => x !== item);
-      }
-      return [...prev, item];
-    });
+    setSelectedSchools((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+    );
   };
 
   const removeSchool = (item: string) => {
     setSelectedSchools((prev) => prev.filter((x) => x !== item));
+  };
+
+  const clearAllFilters = () => {
+    setDepartmentKeyword("");
+    setCategoryKeyword("");
+    setSchoolKeyword("");
+
+    setSelectedDepartments([]);
+    setSelectedCategories([]);
+    setSelectedSchools([]);
+
+    setSelectedSchool("");
+    setSelectedDepartmentCard("");
+    setSelectedCategory("");
+
+    setShowDepartmentDropdown(false);
+    setShowCategoryDropdown(false);
+    setShowSchoolDropdown(false);
   };
 
   return (
@@ -423,161 +539,268 @@ useEffect(() => {
               {error ? <div style={errorStyle}>{error}</div> : null}
             </Panel>
 
-           <Panel title="條件搜尋">
-  <div style={fieldBlockStyle}>
-    <label style={fieldLabelStyle}>搜尋招生系科</label>
-    <div style={searchWrapStyle} ref={departmentSearchRef}>
-      <input
-        type="text"
-        value={departmentKeyword}
-        placeholder="例如：護理、資訊、電子工程"
-        onChange={(e) => {
-          setDepartmentKeyword(e.target.value);
-          setShowDepartmentDropdown(true);
-          setShowSchoolDropdown(false);
-        }}
-        onFocus={() => {
-          setShowDepartmentDropdown(true);
-          setShowSchoolDropdown(false);
-        }}
-        style={searchInputStyle}
-      />
+            <Panel
+              title={
+                <div style={filterPanelHeaderRowStyle}>
+                  <span>條件搜尋</span>
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    style={clearFilterButtonStyle}
+                    disabled={!hasActiveFilters}
+                  >
+                    清除全部
+                  </button>
+                </div>
+              }
+            >
+              <div style={fieldBlockStyle}>
+                <label style={fieldLabelStyle}>搜尋招生系科</label>
+                <div style={searchWrapStyle} ref={departmentSearchRef}>
+                  <input
+                    type="text"
+                    value={departmentKeyword}
+                    placeholder="例如：護理、資訊、電子工程"
+                    onChange={(e) => {
+                      setDepartmentKeyword(e.target.value);
+                      setShowDepartmentDropdown(true);
+                      setShowCategoryDropdown(false);
+                      setShowSchoolDropdown(false);
+                    }}
+                    onFocus={() => {
+                      setShowDepartmentDropdown(true);
+                      setShowCategoryDropdown(false);
+                      setShowSchoolDropdown(false);
+                    }}
+                    style={searchInputStyle}
+                  />
 
-      {showDepartmentDropdown && filteredDepartmentOptions.length > 0 && (
-        <div style={searchDropdownStyle}>
-          {filteredDepartmentOptions.map((item) => {
-            const isSelected = selectedDepartments.includes(item);
+                  {showDepartmentDropdown && (
+                    <div style={searchDropdownStyle}>
+                      {filteredDepartmentOptions.length > 0 ? (
+                        filteredDepartmentOptions.map((item) => {
+                          const isSelected = selectedDepartments.includes(item);
 
-            return (
-              <button
-                key={item}
-                type="button"
-                style={{
-                  ...searchOptionStyle,
-                  background: isSelected ? "#eff6ff" : "#ffffff",
-                  color: "#0f172a",
-                }}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  toggleDepartment(item);
-                }}
-              >
-                <span
-                  style={{
-                    ...checkboxStyle,
-                    background: isSelected ? "#2563eb" : "#ffffff",
-                    borderColor: isSelected ? "#2563eb" : "#cbd5e1",
-                    color: isSelected ? "#ffffff" : "transparent",
-                  }}
-                >
-                  ✓
-                </span>
+                          return (
+                            <button
+                              key={item}
+                              type="button"
+                              style={{
+                                ...searchOptionStyle,
+                                background: isSelected ? "#eff6ff" : "#ffffff",
+                                color: "#0f172a",
+                              }}
+                              onPointerDown={(e) => e.preventDefault()}
+                              onClick={() => toggleDepartment(item)}
+                            >
+                              <span
+                                style={{
+                                  ...checkboxStyle,
+                                  background: isSelected ? "#2563eb" : "#ffffff",
+                                  borderColor: isSelected ? "#2563eb" : "#cbd5e1",
+                                  color: isSelected ? "#ffffff" : "transparent",
+                                }}
+                              >
+                                ✓
+                              </span>
+                              <span>{item}</span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div style={dropdownEmptyStyle}>查無可選系科</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                <span>{item}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  </div>
+              {selectedDepartments.length > 0 ? (
+                <div style={selectedChipWrapStyle}>
+                  {selectedDepartments.map((item) => (
+                    <div key={item} style={selectedChipStyle}>
+                      <span>{item}</span>
+                      <button
+                        type="button"
+                        style={selectedChipRemoveStyle}
+                        onClick={() => removeDepartment(item)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
-  {selectedDepartments.length > 0 ? (
-    <div style={selectedChipWrapStyle}>
-      {selectedDepartments.map((item) => (
-        <div key={item} style={selectedChipStyle}>
-          <span>{item}</span>
-          <button
-            type="button"
-            style={selectedChipRemoveStyle}
-            onClick={() => removeDepartment(item)}
-          >
-            ×
-          </button>
-        </div>
-      ))}
-    </div>
-  ) : null}
+              <div style={optionHintStyle}>
+              </div>
 
-  <div style={dividerStyle} />
+              <div style={dividerStyle} />
 
-  <div style={fieldBlockStyle}>
-    <label style={fieldLabelStyle}>搜尋學校</label>
-    <div style={searchWrapStyle} ref={schoolSearchRef}>
-      <input
-        type="text"
-        value={schoolKeyword}
-        placeholder="例如：長庚、國立、科技大學"
-        onChange={(e) => {
-          setSchoolKeyword(e.target.value);
-          setShowSchoolDropdown(true);
-          setShowDepartmentDropdown(false);
-        }}
-        onFocus={() => {
-          setShowSchoolDropdown(true);
-          setShowDepartmentDropdown(false);
-        }}
-        style={searchInputStyle}
-      />
+              <div style={fieldBlockStyle}>
+                <label style={fieldLabelStyle}>搜尋群類別</label>
+                <div style={searchWrapStyle} ref={categorySearchRef}>
+                  <input
+                    type="text"
+                    value={categoryKeyword}
+                    placeholder="例如：衛生與護理類、家政群幼保類"
+                    onChange={(e) => {
+                      setCategoryKeyword(e.target.value);
+                      setShowCategoryDropdown(true);
+                      setShowDepartmentDropdown(false);
+                      setShowSchoolDropdown(false);
+                    }}
+                    onFocus={() => {
+                      setShowCategoryDropdown(true);
+                      setShowDepartmentDropdown(false);
+                      setShowSchoolDropdown(false);
+                    }}
+                    style={searchInputStyle}
+                  />
 
-      {showSchoolDropdown && filteredSchoolOptions.length > 0 && (
-        <div style={searchDropdownStyle}>
-          {filteredSchoolOptions.map((item) => {
-            const isSelected = selectedSchools.includes(item);
+                  {showCategoryDropdown && (
+                    <div style={searchDropdownStyle}>
+                      {filteredCategoryOptions.length > 0 ? (
+                        filteredCategoryOptions.map((item) => {
+                          const isSelected = selectedCategories.includes(item);
 
-            return (
-              <button
-                key={item}
-                type="button"
-                style={{
-                  ...searchOptionStyle,
-                  background: isSelected ? "#eff6ff" : "#ffffff",
-                  color: "#0f172a",
-                }}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  toggleSchool(item);
-                }}
-              >
-                <span
-                  style={{
-                    ...checkboxStyle,
-                    background: isSelected ? "#2563eb" : "#ffffff",
-                    borderColor: isSelected ? "#2563eb" : "#cbd5e1",
-                    color: isSelected ? "#ffffff" : "transparent",
-                  }}
-                >
-                  ✓
-                </span>
+                          return (
+                            <button
+                              key={item}
+                              type="button"
+                              style={{
+                                ...searchOptionStyle,
+                                background: isSelected ? "#eff6ff" : "#ffffff",
+                                color: "#0f172a",
+                              }}
+                              onPointerDown={(e) => e.preventDefault()}
+                              onClick={() => toggleCategoryFilter(item)}
+                            >
+                              <span
+                                style={{
+                                  ...checkboxStyle,
+                                  background: isSelected ? "#2563eb" : "#ffffff",
+                                  borderColor: isSelected ? "#2563eb" : "#cbd5e1",
+                                  color: isSelected ? "#ffffff" : "transparent",
+                                }}
+                              >
+                                ✓
+                              </span>
+                              <span>{item}</span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div style={dropdownEmptyStyle}>查無可選群類</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                <span>{item}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  </div>
+              {selectedCategories.length > 0 ? (
+                <div style={selectedChipWrapStyle}>
+                  {selectedCategories.map((item) => (
+                    <div key={item} style={selectedChipStyle}>
+                      <span>{item}</span>
+                      <button
+                        type="button"
+                        style={selectedChipRemoveStyle}
+                        onClick={() => removeCategoryFilter(item)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
-  {selectedSchools.length > 0 ? (
-    <div style={selectedChipWrapStyle}>
-      {selectedSchools.map((item) => (
-        <div key={item} style={selectedChipStyle}>
-          <span>{item}</span>
-          <button
-            type="button"
-            style={selectedChipRemoveStyle}
-            onClick={() => removeSchool(item)}
-          >
-            ×
-          </button>
-        </div>
-      ))}
-    </div>
-  ) : null}
-</Panel> 
+              <div style={optionHintStyle}>
+              </div>
 
+              <div style={dividerStyle} />
 
+              <div style={fieldBlockStyle}>
+                <label style={fieldLabelStyle}>搜尋學校</label>
+                <div style={searchWrapStyle} ref={schoolSearchRef}>
+                  <input
+                    type="text"
+                    value={schoolKeyword}
+                    placeholder="例如：長庚、國立、科技大學"
+                    onChange={(e) => {
+                      setSchoolKeyword(e.target.value);
+                      setShowSchoolDropdown(true);
+                      setShowDepartmentDropdown(false);
+                      setShowCategoryDropdown(false);
+                    }}
+                    onFocus={() => {
+                      setShowSchoolDropdown(true);
+                      setShowDepartmentDropdown(false);
+                      setShowCategoryDropdown(false);
+                    }}
+                    style={searchInputStyle}
+                  />
+
+                  {showSchoolDropdown && (
+                    <div style={searchDropdownStyle}>
+                      {filteredSchoolOptions.length > 0 ? (
+                        filteredSchoolOptions.map((item) => {
+                          const isSelected = selectedSchools.includes(item);
+
+                          return (
+                            <button
+                              key={item}
+                              type="button"
+                              style={{
+                                ...searchOptionStyle,
+                                background: isSelected ? "#eff6ff" : "#ffffff",
+                                color: "#0f172a",
+                              }}
+                              onPointerDown={(e) => e.preventDefault()}
+                              onClick={() => toggleSchool(item)}
+                            >
+                              <span
+                                style={{
+                                  ...checkboxStyle,
+                                  background: isSelected ? "#2563eb" : "#ffffff",
+                                  borderColor: isSelected ? "#2563eb" : "#cbd5e1",
+                                  color: isSelected ? "#ffffff" : "transparent",
+                                }}
+                              >
+                                ✓
+                              </span>
+                              <span>{item}</span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div style={dropdownEmptyStyle}>查無可選學校</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedSchools.length > 0 ? (
+                <div style={selectedChipWrapStyle}>
+                  {selectedSchools.map((item) => (
+                    <div key={item} style={selectedChipStyle}>
+                      <span>{item}</span>
+                      <button
+                        type="button"
+                        style={selectedChipRemoveStyle}
+                        onClick={() => removeSchool(item)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              <div style={optionHintStyle}>
+              </div>
+            </Panel>
           </aside>
 
           <section style={contentStyle}>
@@ -616,7 +839,7 @@ useEffect(() => {
               }
             >
               {!hasActiveFilters ? (
-                <div style={emptyStateStyle}>請先在左側選擇招生系科或學校。</div>
+                <div style={emptyStateStyle}>請先在左側選擇任一條件。</div>
               ) : groupedCards.length === 0 ? (
                 <div style={emptyStateStyle}>查無符合資料。</div>
               ) : (
@@ -714,7 +937,7 @@ useEffect(() => {
             <div style={detailGridStyle}>
               <Card title="群類選擇">
                 {!hasActiveFilters ? (
-                  <div style={emptyStateStyle}>請先選擇招生系科或學校。</div>
+                  <div style={emptyStateStyle}>請先選擇任一條件。</div>
                 ) : !selectedSchool ? (
                   <div style={emptyStateStyle}>請先選擇學校與系科。</div>
                 ) : (
@@ -753,7 +976,7 @@ useEffect(() => {
 
               <Card title="群類倍率明細">
                 {!hasActiveFilters ? (
-                  <div style={emptyStateStyle}>請先選擇招生系科或學校。</div>
+                  <div style={emptyStateStyle}>請先選擇任一條件。</div>
                 ) : !selectedDetail ? (
                   <div style={emptyStateStyle}>請先選擇群類別。</div>
                 ) : (
@@ -806,7 +1029,7 @@ function Panel({
   title,
   children,
 }: {
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -830,6 +1053,14 @@ function Card({
       {children}
     </section>
   );
+}
+function isSameStringArray(a: string[], b: string[]) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 function UploadCard({
@@ -874,10 +1105,43 @@ function UploadCard({
         <button onClick={onClick} style={uploadButtonStyle}>
           {buttonLabel}
         </button>
-
-         </div>
+      </div>
     </div>
   );
+}
+
+function normalizeRows(data: OverviewRow[]): OverviewRow[] {
+  return (data || [])
+    .filter((row) => Object.values(row).some((v) => String(v ?? "").trim() !== ""))
+    .map((row) => ({
+      學校: String(row.學校 ?? "").trim(),
+      招生系科: String(row.招生系科 ?? "").trim(),
+      招生群類別: String(row.招生群類別 ?? "").trim(),
+      一般考生招生名額: row.一般考生招生名額 ?? "",
+      國文: row.國文 ?? "",
+      英文: row.英文 ?? "",
+      數學: row.數學 ?? "",
+      專業一: row.專業一 ?? "",
+      專業二: row.專業二 ?? "",
+    }));
+}
+
+function uniqueSorted(list: string[]) {
+  return [...new Set(list)].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+}
+
+function sortOptionsWithSelectedFirst(options: string[], selected: string[]) {
+  const selectedSet = new Set(selected);
+
+  return [...options].sort((a, b) => {
+    const aSelected = selectedSet.has(a);
+    const bSelected = selectedSet.has(b);
+
+    if (aSelected && !bSelected) return -1;
+    if (!aSelected && bSelected) return 1;
+
+    return a.localeCompare(b, "zh-Hant");
+  });
 }
 
 function toNumber(value: unknown): number {
@@ -932,8 +1196,7 @@ const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
   background: "linear-gradient(180deg, #eef3f9 0%, #f6f8fb 38%, #f3f6fa 100%)",
   padding: "8px 24px 24px",
-  fontFamily:
-    '"Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif',
+  fontFamily: '"Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif',
   color: "#0f172a",
 };
 
@@ -1018,6 +1281,24 @@ const panelHeaderStyle: React.CSSProperties = {
   marginBottom: "12px",
 };
 
+const filterPanelHeaderRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+};
+
+const clearFilterButtonStyle: React.CSSProperties = {
+  border: "1px solid #dbeafe",
+  background: "#eff6ff",
+  color: "#2563eb",
+  borderRadius: "10px",
+  padding: "8px 12px",
+  fontSize: "13px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
 const cardStyle: React.CSSProperties = {
   background: "rgba(255,255,255,0.88)",
   border: "1px solid rgba(226,232,240,0.9)",
@@ -1036,7 +1317,7 @@ const cardHeaderStyle: React.CSSProperties = {
 
 const cardTitleRowStyle: React.CSSProperties = {
   display: "flex",
-  justifyContent: "space-between", 
+  justifyContent: "space-between",
   alignItems: "center",
   gap: "12px",
   flexWrap: "wrap",
@@ -1139,12 +1420,6 @@ const uploadButtonStyle: React.CSSProperties = {
   lineHeight: 1.2,
 };
 
-const fileNameTextStyle: React.CSSProperties = {
-  fontSize: "12px",
-  color: "#64748b",
-  wordBreak: "break-all",
-};
-
 const errorStyle: React.CSSProperties = {
   marginTop: "12px",
   borderRadius: "14px",
@@ -1199,6 +1474,12 @@ const searchDropdownStyle: React.CSSProperties = {
   padding: "8px",
 };
 
+const dropdownEmptyStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  fontSize: "14px",
+  color: "#64748b",
+};
+
 const headerInnerStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
@@ -1217,7 +1498,6 @@ const navButtonStyle: React.CSSProperties = {
   border: "1px solid #dbeafe",
   cursor: "pointer",
 };
-
 
 const selectedChipWrapStyle: React.CSSProperties = {
   display: "flex",
@@ -1249,10 +1529,11 @@ const selectedChipRemoveStyle: React.CSSProperties = {
   padding: 0,
 };
 
-const emptyHintStyle: React.CSSProperties = {
-  fontSize: "13px",
+const optionHintStyle: React.CSSProperties = {
+  marginTop: "10px",
+  fontSize: "12px",
   color: "#64748b",
-  lineHeight: 1.7,
+  fontWeight: 700,
 };
 
 const emptyStateStyle: React.CSSProperties = {
@@ -1487,6 +1768,7 @@ const searchOptionStyle: React.CSSProperties = {
   gap: "10px",
   transition: "background 0.15s",
 };
+
 const scoreCardLabelStyle: React.CSSProperties = {
   fontSize: "12px",
   color: "#64748b",
