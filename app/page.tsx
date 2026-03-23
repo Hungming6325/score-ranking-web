@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import Link from "next/link";
 
@@ -149,7 +149,164 @@ export default function Home() {
       },
     });
   };
+const parseCsvUrl = async <T extends Record<string, unknown>>(
+  url: string,
+  requiredColumns: string[]
+): Promise<ParsedFileResult<T>> => {
+  try {
+    const res = await fetch(url);
 
+    if (!res.ok) {
+      return {
+        ok: false,
+        rows: [],
+        error: `無法載入檔案：${url}`,
+      };
+    }
+
+    const text = await res.text();
+
+    return await new Promise((resolve) => {
+      Papa.parse<T>(text, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (res) => {
+          const rows = (res.data || []).filter((row) =>
+            Object.values(row).some((v) => String(v ?? "").trim() !== "")
+          );
+
+          const firstRow = rows[0];
+          if (!firstRow) {
+            resolve({
+              ok: false,
+              rows: [],
+              error: "CSV 沒有資料",
+            });
+            return;
+          }
+
+          const missingColumns = requiredColumns.filter((col) => !(col in firstRow));
+          if (missingColumns.length > 0) {
+            resolve({
+              ok: false,
+              rows: [],
+              error: `缺少欄位：${missingColumns.join(", ")}`,
+            });
+            return;
+          }
+
+          resolve({
+            ok: true,
+            rows,
+          });
+        },
+        error: () => {
+          resolve({
+            ok: false,
+            rows: [],
+            error: "CSV 讀取失敗",
+          });
+        },
+      });
+    });
+  } catch {
+    return {
+      ok: false,
+      rows: [],
+      error: `無法載入檔案：${url}`,
+    };
+  }
+};
+useEffect(() => {
+  const loadDefaultFiles = async () => {
+    setError("");
+
+    const [configParsed, parentParsed, selectionParsed] = await Promise.all([
+      parseCsvUrl<ConfigRow>("/一階篩選倍率_114.csv", [
+        "招生系科",
+        "招生群類別",
+        "一般考生招生名額",
+        "國文",
+        "英文",
+        "數學",
+        "專業一",
+        "專業二",
+      ]),
+      parseCsvUrl<ParentRowData>("/全國類群成績_114.csv", [
+        "招生群類別",
+        "成績區間",
+        "國文",
+        "英文",
+        "數學",
+        "專業一",
+        "專業二",
+      ]),
+      parseCsvUrl<SelectionRowData>("/學校甄選成績_114.csv", [
+        "招生系科",
+        "招生群類別",
+        "國文",
+        "英文",
+        "數學",
+        "專業一",
+        "專業二",
+      ]),
+    ]);
+
+    if (configParsed.ok) {
+      const cleaned = configParsed.rows.map((row) => ({
+        ...row,
+        招生系科: String(row.招生系科 ?? "").trim(),
+        招生群類別: String(row.招生群類別 ?? "").trim(),
+      }));
+      setConfigData(cleaned);
+      setConfigFileName("一階篩選倍率_114.csv");
+    } else {
+      setConfigData([]);
+    }
+
+    if (parentParsed.ok) {
+      const cleaned = parentParsed.rows.map((row) => ({
+        ...row,
+        招生群類別: String(row.招生群類別 ?? "").trim(),
+        成績區間: String(row.成績區間 ?? "").trim(),
+      }));
+      setParentData(cleaned);
+      setParentFileName("全國類群成績_114.csv");
+    } else {
+      setParentData([]);
+    }
+
+    if (selectionParsed.ok) {
+      const cleaned = selectionParsed.rows.map((row) => ({
+        ...row,
+        招生系科: String(row.招生系科 ?? "").trim(),
+        招生群類別: String(row.招生群類別 ?? "").trim(),
+      }));
+      setSelectionData(cleaned);
+      setSelectionFileName("學校甄選成績_114.csv");
+    } else {
+      setSelectionData([]);
+    }
+
+    if (!configParsed.ok || !parentParsed.ok || !selectionParsed.ok) {
+      setError(
+        [
+          !configParsed.ok ? `倍率設定檔：${configParsed.error}` : "",
+          !parentParsed.ok ? `全國成績檔：${parentParsed.error}` : "",
+          !selectionParsed.ok ? `甄選成績檔：${selectionParsed.error}` : "",
+        ]
+          .filter(Boolean)
+          .join("｜")
+      );
+    }
+
+    setSelectedDepartment("");
+    setSelectedCategory("");
+    resetSimulationState();
+  };
+
+  loadDefaultFiles();
+}, []);
   const handleConfigFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -798,9 +955,10 @@ function UploadCard({
           </div>
         </div>
 
-        <button onClick={onClick} style={uploadButtonStyle}>
-          {buttonLabel}
-        </button>
+<button onClick={onClick} style={uploadButtonStyle}>
+  {buttonLabel}
+</button>
+
       </div>
     </div>
   );

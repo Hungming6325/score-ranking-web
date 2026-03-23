@@ -28,6 +28,55 @@ export default function OverviewPage() {
   const [rows, setRows] = useState<OverviewRow[]>([]);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
+useEffect(() => {
+    const loadCsv = async () => {
+      try {
+        const res = await fetch("/114全國一階篩選倍率.csv");
+        const text = await res.text();
+
+        Papa.parse<OverviewRow>(text, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (res) => {
+            const cleaned = (res.data || [])
+              .filter((row) =>
+                Object.values(row).some((v) => String(v ?? "").trim() !== "")
+              )
+              .map((row) => ({
+                學校: String(row.學校 ?? "").trim(),
+                招生系科: String(row.招生系科 ?? "").trim(),
+                招生群類別: String(row.招生群類別 ?? "").trim(),
+                一般考生招生名額: row.一般考生招生名額 ?? "",
+                國文: row.國文 ?? "",
+                英文: row.英文 ?? "",
+                數學: row.數學 ?? "",
+                專業一: row.專業一 ?? "",
+                專業二: row.專業二 ?? "",
+              }));
+
+            if (!cleaned.length) {
+              setRows([]);
+              setError("沒有資料");
+              return;
+            }
+
+            setRows(cleaned);
+            setFileName("114全國一階篩選倍率.csv");
+            setError("");
+          },
+          error: () => {
+            setRows([]);
+            setError("讀取失敗");
+          },
+        });
+      } catch {
+        setRows([]);
+        setError("無法載入雲端檔案");
+      }
+    };
+
+    loadCsv();
+  }, []);
 
   const [departmentKeyword, setDepartmentKeyword] = useState("");
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
