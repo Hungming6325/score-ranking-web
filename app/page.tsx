@@ -218,51 +218,13 @@ const parseCsvUrl = async <T extends Record<string, unknown>>(
   }
 };
 useEffect(() => {
-  const loadDefaultFiles = async () => {
+  const loadParentData = async () => {
     setError("");
 
-    const [configParsed, parentParsed, selectionParsed] = await Promise.all([
-      parseCsvUrl<ConfigRow>("/一階篩選倍率_114.csv", [
-        "招生系科",
-        "招生群類別",
-        "一般考生招生名額",
-        "國文",
-        "英文",
-        "數學",
-        "專業一",
-        "專業二",
-      ]),
-      parseCsvUrl<ParentRowData>("/全國類群成績_114.csv", [
-        "招生群類別",
-        "成績區間",
-        "國文",
-        "英文",
-        "數學",
-        "專業一",
-        "專業二",
-      ]),
-      parseCsvUrl<SelectionRowData>("/學校甄選成績_114.csv", [
-        "招生系科",
-        "招生群類別",
-        "國文",
-        "英文",
-        "數學",
-        "專業一",
-        "專業二",
-      ]),
-    ]);
-
-    if (configParsed.ok) {
-      const cleaned = configParsed.rows.map((row) => ({
-        ...row,
-        招生系科: String(row.招生系科 ?? "").trim(),
-        招生群類別: String(row.招生群類別 ?? "").trim(),
-      }));
-      setConfigData(cleaned);
-      setConfigFileName("一階篩選倍率_114.csv");
-    } else {
-      setConfigData([]);
-    }
+    const parentParsed = await parseCsvUrl<ParentRowData>(
+      "/全國類群成績_114.csv",
+      ["招生群類別", "成績區間", "國文", "英文", "數學", "專業一", "專業二"]
+    );
 
     if (parentParsed.ok) {
       const cleaned = parentParsed.rows.map((row) => ({
@@ -270,43 +232,20 @@ useEffect(() => {
         招生群類別: String(row.招生群類別 ?? "").trim(),
         成績區間: String(row.成績區間 ?? "").trim(),
       }));
+
       setParentData(cleaned);
-      setParentFileName("全國類群成績_114.csv");
+      setParentFileName("全國類群成績_114.csv"); // 👉 用來顯示「已上傳」
     } else {
       setParentData([]);
+      setError(`全國成績檔：${parentParsed.error}`);
     }
-
-    if (selectionParsed.ok) {
-      const cleaned = selectionParsed.rows.map((row) => ({
-        ...row,
-        招生系科: String(row.招生系科 ?? "").trim(),
-        招生群類別: String(row.招生群類別 ?? "").trim(),
-      }));
-      setSelectionData(cleaned);
-      setSelectionFileName("學校甄選成績_114.csv");
-    } else {
-      setSelectionData([]);
-    }
-
-    if (!configParsed.ok || !parentParsed.ok || !selectionParsed.ok) {
-      setError(
-        [
-          !configParsed.ok ? `倍率設定檔：${configParsed.error}` : "",
-          !parentParsed.ok ? `全國成績檔：${parentParsed.error}` : "",
-          !selectionParsed.ok ? `甄選成績檔：${selectionParsed.error}` : "",
-        ]
-          .filter(Boolean)
-          .join("｜")
-      );
-    }
-
-    setSelectedDepartment("");
-    setSelectedCategory("");
-    resetSimulationState();
   };
 
-  loadDefaultFiles();
+  loadParentData();
 }, []);
+
+  
+
   const handleConfigFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -407,12 +346,24 @@ useEffect(() => {
   }, [configData]);
 
   const categoryOptions = useMemo(() => {
+  // 如果已經有倍率設定檔，優先用倍率設定檔的群類別
+  if (configData.length > 0) {
     const rows = selectedDepartment
       ? configData.filter((row) => row.招生系科 === selectedDepartment)
       : configData;
 
     return [...new Set(rows.map((row) => row.招生群類別).filter(Boolean))];
-  }, [configData, selectedDepartment]);
+  }
+
+  // 如果還沒上傳倍率設定檔，就先用全國類群成績的群類別
+  return [
+    ...new Set(
+      parentData
+        .map((row) => String(row.招生群類別 ?? "").trim())
+        .filter(Boolean)
+    ),
+  ];
+}, [configData, parentData, selectedDepartment]);
 
   const selectedConfig = useMemo(() => {
     if (!selectedDepartment || !selectedCategory) return null;
@@ -698,7 +649,7 @@ useEffect(() => {
           }
         }}
         style={selectStyle}
-        disabled={!selectedDepartment}
+disabled={configData.length > 0 ? !selectedDepartment : !parentData.length}
       >
         <option value="">請選擇群類別</option>
         {categoryOptions.map((item) => (
@@ -1661,13 +1612,13 @@ const uploadCardTitleStyle: React.CSSProperties = {
 const uploadStatusStyle: React.CSSProperties = {
   borderRadius: "999px",
   padding: "5px 10px",
-  fontSize: "12px",
+  fontSize: "14px",
   fontWeight: 800,
   flexShrink: 0,
 };
 
 const fileNameBoxStyle: React.CSSProperties = {
-  fontSize: "13px",
+  fontSize: "14px",
   color: "#475569",
   background: "#f8fafc",
   border: "1px solid #e2e8f0",
@@ -1684,7 +1635,7 @@ const uploadButtonStyle: React.CSSProperties = {
   background: "#eef4ff",
   color: "#2563eb",
   fontWeight: 800,
-  fontSize: "13px",
+  fontSize: "14px",
   padding: "6px 10px",
   cursor: "pointer",
   lineHeight: 1.2,
@@ -2028,7 +1979,7 @@ const navButtonStyle: React.CSSProperties = {
   textDecoration: "none",
   borderRadius: "12px",
   padding: "10px 16px",
-  fontSize: "14px",
+  fontSize: "16px",
   fontWeight: 800,
   color: "#2563eb",
   background: "#eef4ff",

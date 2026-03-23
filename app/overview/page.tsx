@@ -408,7 +408,6 @@ useEffect(() => {
             <Panel title="資料上傳">
               <UploadCard
                 title="倍率資料"
-                fileName={fileName}
                 buttonLabel="選擇檔案"
                 onClick={() => fileInputRef.current?.click()}
                 isReady={!!fileName}
@@ -817,7 +816,6 @@ function Card({
 
 function UploadCard({
   title,
-  fileName,
   buttonLabel,
   onClick,
   isReady,
@@ -860,8 +858,7 @@ function UploadCard({
           {buttonLabel}
         </button>
 
-        {fileName ? <div style={fileNameTextStyle}>{fileName}</div> : null}
-      </div>
+         </div>
     </div>
   );
 }
@@ -1106,7 +1103,7 @@ const uploadCardTitleStyle: React.CSSProperties = {
 const uploadStatusStyle: React.CSSProperties = {
   borderRadius: "999px",
   padding: "5px 10px",
-  fontSize: "12px",
+  fontSize: "14px",
   fontWeight: 800,
   flexShrink: 0,
 };
@@ -1118,7 +1115,7 @@ const uploadButtonStyle: React.CSSProperties = {
   background: "#eef4ff",
   color: "#2563eb",
   fontWeight: 800,
-  fontSize: "13px",
+  fontSize: "14px",
   padding: "8px 10px",
   cursor: "pointer",
   lineHeight: 1.2,
@@ -1195,7 +1192,7 @@ const navButtonStyle: React.CSSProperties = {
   textDecoration: "none",
   borderRadius: "12px",
   padding: "10px 16px",
-  fontSize: "14px",
+  fontSize: "16px",
   fontWeight: 800,
   color: "#2563eb",
   background: "#eef4ff",
