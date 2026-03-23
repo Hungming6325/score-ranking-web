@@ -822,7 +822,6 @@ function UploadCard({
   accent,
 }: {
   title: string;
-  fileName: string;
   buttonLabel: string;
   onClick: () => void;
   isReady: boolean;
