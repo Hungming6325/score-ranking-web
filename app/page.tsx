@@ -234,7 +234,7 @@ useEffect(() => {
       }));
 
       setParentData(cleaned);
-      setParentFileName("全國類群成績_114.csv"); // 👉 用來顯示「已上傳」
+      setParentFileName("全國類群成績_114.csv"); 
     } else {
       setParentData([]);
       setError(`全國成績檔：${parentParsed.error}`);
@@ -565,7 +565,6 @@ useEffect(() => {
     <div style={stackStyle}>
       <UploadCard
         title="學校倍率設定"
-        fileName={configFileName}
         buttonLabel="選擇倍率設定檔"
         onClick={() => configFileInputRef.current?.click()}
         isReady={!!configFileName}
@@ -573,7 +572,6 @@ useEffect(() => {
       />
       <UploadCard
         title="全國類群成績"
-        fileName={parentFileName}
         buttonLabel="選擇全國成績檔案"
         onClick={() => parentFileInputRef.current?.click()}
         isReady={!!parentFileName}
@@ -581,7 +579,6 @@ useEffect(() => {
       />
       <UploadCard
         title="學校甄選成績"
-        fileName={selectionFileName}
         buttonLabel="選擇甄選成績檔"
         onClick={() => selectionFileInputRef.current?.click()}
         isReady={!!selectionFileName}
@@ -853,7 +850,7 @@ function Card({
   title,
   children,
 }: {
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -866,14 +863,12 @@ function Card({
 
 function UploadCard({
   title,
-  fileName,
   buttonLabel,
   onClick,
   isReady,
   accent,
 }: {
   title: string;
-  fileName: string;
   buttonLabel: string;
   onClick: () => void;
   isReady: boolean;
