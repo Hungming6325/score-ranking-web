@@ -803,6 +803,7 @@ useEffect(() => {
             </Panel>
           </aside>
 
+         
           <section style={contentStyle}>
             <Card
               title={
@@ -843,182 +844,144 @@ useEffect(() => {
               ) : groupedCards.length === 0 ? (
                 <div style={emptyStateStyle}>查無符合資料。</div>
               ) : (
-                <div style={schoolGridStyle}>
-                  {groupedCards.map((item) => {
-                    const isActive =
-                      selectedSchool === item.school &&
-                      selectedDepartmentCard === item.department;
+                <div style={overviewBodyStyle}>
+                  <div style={schoolGridStyle}>
+                    {groupedCards.map((item) => {
+                      const isActive =
+                        selectedSchool === item.school &&
+                        selectedDepartmentCard === item.department;
 
-                    return (
-                      <div
-                        key={`${item.school}__${item.department}`}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          setSelectedSchool(item.school);
-                          setSelectedDepartmentCard(item.department);
-                          setSelectedCategory(item.categories[0] || "");
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
+                      return (
+                        <div
+                          key={`${item.school}__${item.department}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
                             setSelectedSchool(item.school);
                             setSelectedDepartmentCard(item.department);
                             setSelectedCategory(item.categories[0] || "");
-                          }
-                        }}
-                        style={{
-                          ...schoolCardStyle,
-                          borderColor: isActive ? "#93c5fd" : "#e2e8f0",
-                          background: isActive ? "#f8fbff" : "#ffffff",
-                          boxShadow: isActive
-                            ? "0 12px 24px rgba(37,99,235,0.10)"
-                            : "0 8px 18px rgba(15,23,42,0.04)",
-                        }}
-                      >
-                        <div style={schoolCardHeaderStyle}>
-                          <div style={schoolTextBlockStyle}>
-                            <div style={schoolNameStyle}>{item.school}</div>
-                            <div style={schoolDepartmentStyle}>{item.department}</div>
-                          </div>
-
-                          <div style={schoolRightMetaStyle}>
-                            <div
-                              style={{
-                                ...schoolBadgeStyle,
-                                background: isActive ? "#dbeafe" : "#f1f5f9",
-                                color: isActive ? "#1d4ed8" : "#475569",
-                              }}
-                            >
-                              {item.categories.length} 群類
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelectedSchool(item.school);
+                              setSelectedDepartmentCard(item.department);
+                              setSelectedCategory(item.categories[0] || "");
+                            }
+                          }}
+                          style={{
+                            ...schoolCardStyle,
+                            borderColor: isActive ? "#93c5fd" : "#e2e8f0",
+                            background: isActive ? "#f8fbff" : "#ffffff",
+                            boxShadow: isActive
+                              ? "0 12px 24px rgba(37,99,235,0.10)"
+                              : "0 8px 18px rgba(15,23,42,0.04)",
+                          }}
+                        >
+                          <div style={schoolCardHeaderStyle}>
+                            <div style={schoolTextBlockStyle}>
+                              <div style={schoolNameStyle}>{item.school}</div>
+                              <div style={schoolDepartmentStyle}>{item.department}</div>
                             </div>
-                            <div style={schoolQuotaBadgeStyle}>
-                              招生名額 {item.totalQuota.toLocaleString()}
-                            </div>
-                          </div>
-                        </div>
 
-                        <div style={categoryChipWrapStyle}>
-                          {item.categories.map((cat) => {
-                            const chipActive =
-                              selectedSchool === item.school &&
-                              selectedDepartmentCard === item.department &&
-                              selectedCategory === cat;
-
-                            return (
-                              <button
-                                key={cat}
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedSchool(item.school);
-                                  setSelectedDepartmentCard(item.department);
-                                  setSelectedCategory(cat);
-                                }}
+                            <div style={schoolRightMetaStyle}>
+                              <div
                                 style={{
-                                  ...categoryChipButtonStyle,
-                                  background: chipActive ? "#dbeafe" : "#f8fafc",
-                                  color: chipActive ? "#1d4ed8" : "#475569",
-                                  borderColor: chipActive ? "#93c5fd" : "#e2e8f0",
+                                  ...schoolBadgeStyle,
+                                  background: isActive ? "#dbeafe" : "#f1f5f9",
+                                  color: isActive ? "#1d4ed8" : "#475569",
                                 }}
                               >
-                                {cat}
-                              </button>
+                                {item.categories.length} 群類
+                              </div>
+                              <div style={schoolQuotaBadgeStyle}>
+                                招生名額 {item.totalQuota.toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={categoryChipWrapStyle}>
+                            {item.categories.map((cat) => {
+                              const chipActive =
+                                selectedSchool === item.school &&
+                                selectedDepartmentCard === item.department &&
+                                selectedCategory === cat;
+
+                              return (
+                                <button
+                                  key={cat}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSchool(item.school);
+                                    setSelectedDepartmentCard(item.department);
+                                    setSelectedCategory(cat);
+                                  }}
+                                  style={{
+                                    ...categoryChipButtonStyle,
+                                    background: chipActive ? "#dbeafe" : "#f8fafc",
+                                    color: chipActive ? "#1d4ed8" : "#475569",
+                                    borderColor: chipActive ? "#93c5fd" : "#e2e8f0",
+                                  }}
+                                >
+                                  {cat}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {selectedDetail ? (
+                    <div style={floatingDetailWrapStyle}>
+                      <div style={floatingDetailCardStyle}>
+                        <div style={floatingDetailHeaderStyle}>
+                          <div style={floatingDetailTitleStyle}>群類倍率摘要</div>
+                          <div style={floatingDetailCategoryPillStyle}>{selectedCategory}</div>
+                        </div>
+
+                        <div style={floatingDetailSchoolStyle}>{selectedSchool}</div>
+                        <div style={floatingDetailDepartmentStyle}>{selectedDepartmentCard}</div>
+
+                        <div style={floatingDetailQuotaRowStyle}>
+                          <span style={floatingDetailQuotaLabelStyle}>招生名額</span>
+                          <span style={floatingDetailQuotaValueStyle}>
+                            {toNumber(selectedDetail.一般考生招生名額).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div style={floatingScoreGridStyle}>
+                          {scoreFields.map((field) => {
+                            const n = toNumber(selectedDetail[field]);
+                            const tone = getHeatTone(n);
+
+                            return (
+                              <div
+                                key={field}
+                                style={{
+                                  ...floatingScoreCardStyle,
+                                  background: tone.bg,
+                                  borderColor: tone.border,
+                                }}
+                              >
+                                <div style={floatingScoreLabelStyle}>{field}</div>
+                                <div style={{ ...floatingScoreValueStyle, color: tone.color }}>
+                                  {displayValue(selectedDetail[field])}
+                                </div>
+                              </div>
                             );
                           })}
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ) : null}
                 </div>
               )}
             </Card>
-
-            <div style={detailGridStyle}>
-              <Card title="群類選擇">
-                {!hasActiveFilters ? (
-                  <div style={emptyStateStyle}>請先選擇任一條件。</div>
-                ) : !selectedSchool ? (
-                  <div style={emptyStateStyle}>請先選擇學校與系科。</div>
-                ) : (
-                  <>
-                    <div style={detailTitleBarStyle}>
-                      <div style={detailTitleMainStyle}>{selectedSchool}</div>
-                      <div style={detailDepartmentStyle}>{selectedDepartmentCard}</div>
-                      <div style={detailSubTitleStyle}>
-                        共 {selectedSchoolCategories.length} 個招生群類
-                      </div>
-                    </div>
-
-                    <div style={categorySelectGridStyle}>
-                      {selectedSchoolCategories.map((cat) => {
-                        const active = selectedCategory === cat;
-                        return (
-                          <button
-                            key={cat}
-                            type="button"
-                            onClick={() => setSelectedCategory(cat)}
-                            style={{
-                              ...categorySelectCardStyle,
-                              borderColor: active ? "#93c5fd" : "#e2e8f0",
-                              background: active ? "#eff6ff" : "#ffffff",
-                              color: active ? "#1d4ed8" : "#0f172a",
-                            }}
-                          >
-                            {cat}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </Card>
-
-              <Card title="群類倍率明細">
-                {!hasActiveFilters ? (
-                  <div style={emptyStateStyle}>請先選擇任一條件。</div>
-                ) : !selectedDetail ? (
-                  <div style={emptyStateStyle}>請先選擇群類別。</div>
-                ) : (
-                  <>
-                    <div style={detailHeaderPanelStyle}>
-                      <div>
-                        <div style={detailSchoolStyle}>{selectedSchool}</div>
-                        <div style={detailDepartmentInlineStyle}>{selectedDepartmentCard}</div>
-                        <div style={detailCategoryStyle}>{selectedCategory}</div>
-                      </div>
-                      <div style={quotaBadgeStyle}>
-                        招生名額 {toNumber(selectedDetail.一般考生招生名額).toLocaleString()}
-                      </div>
-                    </div>
-
-                    <div style={scoreCardGridStyle}>
-                      {scoreFields.map((field) => {
-                        const n = toNumber(selectedDetail[field]);
-                        const tone = getHeatTone(n);
-
-                        return (
-                          <div
-                            key={field}
-                            style={{
-                              ...scoreCardStyle,
-                              background: tone.bg,
-                              borderColor: tone.border,
-                            }}
-                          >
-                            <div style={scoreCardLabelStyle}>{field}</div>
-                            <div style={{ ...scoreCardValueStyle, color: tone.color }}>
-                              {displayValue(selectedDetail[field])}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </Card>
-            </div>
           </section>
+
         </div>
       </div>
     </main>
@@ -1245,11 +1208,184 @@ const titleStyle: React.CSSProperties = {
   color: "#0f172a",
 };
 
+const overviewBodyStyle: React.CSSProperties = {
+  position: "relative",
+};
+
+const floatingDetailWrapStyle: React.CSSProperties = {
+  position: "fixed",
+  top: "96px",
+  right: "24px",
+  width: "420px",
+  zIndex: 60,
+  pointerEvents: "none",
+};
+
+const floatingDetailCardStyle: React.CSSProperties = {
+  pointerEvents: "auto",
+  background: "rgba(255,255,255,0.96)",
+  border: "1px solid #dbeafe",
+  borderRadius: "22px",
+  padding: "18px",
+  boxShadow: "0 20px 48px rgba(15,23,42,0.16)",
+  backdropFilter: "blur(12px)",
+};
+
+
+const floatingDetailTitleStyle: React.CSSProperties = {
+  fontSize: "18px",
+  fontWeight: 800,
+  color: "#0f172a",
+};
+
+const floatingDetailCategoryPillStyle: React.CSSProperties = {
+  borderRadius: "999px",
+  padding: "8px 12px",
+  background: "#eff6ff",
+  color: "#1d4ed8",
+  border: "1px solid #bfdbfe",
+  fontSize: "13px",
+  fontWeight: 800,
+  lineHeight: 1.2,
+  flexShrink: 0,
+};
+
+const floatingDetailSchoolStyle: React.CSSProperties = {
+  fontSize: "20px",
+  fontWeight: 800,
+  color: "#0f172a",
+  lineHeight: 1.4,
+};
+
+const floatingDetailDepartmentStyle: React.CSSProperties = {
+  marginTop: "4px",
+  fontSize: "15px",
+  color: "#475569",
+  fontWeight: 700,
+  lineHeight: 1.5,
+};
+
+const floatingDetailQuotaRowStyle: React.CSSProperties = {
+  marginTop: "14px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  borderRadius: "14px",
+  padding: "10px 12px",
+  background: "#f8fbff",
+  border: "1px solid #dbeafe",
+};
+
+
+const floatingDetailQuotaValueStyle: React.CSSProperties = {
+  fontSize: "16px",
+  color: "#1d4ed8",
+  fontWeight: 800,
+};
+
+const floatingScoreGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "10px",
+  marginTop: "16px",
+};
+
+const floatingScoreCardStyle: React.CSSProperties = {
+  border: "1px solid",
+  borderRadius: "16px",
+  padding: "14px 12px",
+  minHeight: "88px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+};
+
+const floatingScoreLabelStyle: React.CSSProperties = {
+  fontSize: "12px",
+  color: "#64748b",
+  marginBottom: "6px",
+  fontWeight: 700,
+};
+
+const floatingScoreValueStyle: React.CSSProperties = {
+  fontSize: "24px",
+  fontWeight: 800,
+  lineHeight: 1.2,
+};
+
 const layoutStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "340px minmax(0, 1fr)",
   gap: "18px",
   alignItems: "start",
+};
+
+const detailSummaryWrapStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "14px",
+};
+
+const detailHeroStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "16px",
+  padding: "18px",
+  borderRadius: "18px",
+  background: "linear-gradient(135deg, #f8fbff 0%, #eef6ff 100%)",
+  border: "1px solid #dbeafe",
+};
+
+const detailHeroMainStyle: React.CSSProperties = {
+  minWidth: 0,
+  flex: 1,
+};
+
+const detailHeroMetaStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-end",
+  gap: "10px",
+  flexShrink: 0,
+};
+
+const detailCategoryPillStyle: React.CSSProperties = {
+  borderRadius: "999px",
+  padding: "8px 12px",
+  background: "#eff6ff",
+  color: "#1d4ed8",
+  border: "1px solid #bfdbfe",
+  fontSize: "13px",
+  fontWeight: 800,
+  lineHeight: 1.2,
+  textAlign: "center",
+};
+
+const summaryCaptionStyle: React.CSSProperties = {
+  fontSize: "13px",
+  color: "#64748b",
+  fontWeight: 800,
+  letterSpacing: "0.02em",
+};
+
+const scoreCardTopStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "8px",
+  marginBottom: "10px",
+};
+
+const scoreCardMiniTagStyle: React.CSSProperties = {
+  borderRadius: "999px",
+  padding: "4px 8px",
+  background: "rgba(255,255,255,0.65)",
+  border: "1px solid rgba(148,163,184,0.22)",
+  fontSize: "11px",
+  color: "#64748b",
+  fontWeight: 800,
+  lineHeight: 1,
 };
 
 const sidebarStyle: React.CSSProperties = {
@@ -1487,6 +1623,94 @@ const headerInnerStyle: React.CSSProperties = {
   width: "100%",
 };
 
+const overviewBodyStyle: React.CSSProperties = {
+  position: "relative",
+};
+
+const floatingDetailWrapStyle: React.CSSProperties = {
+  position: "fixed",
+  top: "96px",
+  right: "24px",
+  width: "min(420px, calc(100vw - 32px))",
+  zIndex: 60,
+  pointerEvents: "none",
+};
+
+
+const floatingDetailHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  marginBottom: "12px",
+};
+
+const floatingDetailTitleStyle: React.CSSProperties = {
+  fontSize: "18px",
+  fontWeight: 800,
+  color: "#0f172a",
+};
+
+
+const floatingDetailSchoolStyle: React.CSSProperties = {
+  fontSize: "20px",
+  fontWeight: 800,
+  color: "#0f172a",
+  lineHeight: 1.4,
+};
+
+const floatingDetailQuotaRowStyle: React.CSSProperties = {
+  marginTop: "14px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  borderRadius: "14px",
+  padding: "10px 12px",
+  background: "#f8fbff",
+  border: "1px solid #dbeafe",
+};
+
+const floatingDetailQuotaLabelStyle: React.CSSProperties = {
+  fontSize: "13px",
+  color: "#64748b",
+  fontWeight: 700,
+};
+
+const floatingDetailQuotaValueStyle: React.CSSProperties = {
+  fontSize: "16px",
+  color: "#1d4ed8",
+  fontWeight: 800,
+};
+
+const floatingScoreGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "10px",
+  marginTop: "16px",
+};
+
+const floatingScoreCardStyle: React.CSSProperties = {
+  border: "1px solid",
+  borderRadius: "16px",
+  padding: "14px 12px",
+  minHeight: "88px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+};
+
+const floatingScoreLabelStyle: React.CSSProperties = {
+  fontSize: "12px",
+  color: "#64748b",
+  marginBottom: "6px",
+  fontWeight: 700,
+};
+
+const floatingScoreValueStyle: React.CSSProperties = {
+  fontSize: "24px",
+  fontWeight: 800,
+  lineHeight: 1.2,
+};
 const navButtonStyle: React.CSSProperties = {
   textDecoration: "none",
   borderRadius: "12px",
@@ -1727,17 +1951,17 @@ const scoreCardGridStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
   gap: "12px",
-  marginBottom: "18px",
 };
 
 const scoreCardStyle: React.CSSProperties = {
   border: "1px solid",
-  borderRadius: "16px",
-  padding: "14px",
-  minHeight: "96px",
+  borderRadius: "18px",
+  padding: "16px 14px",
+  minHeight: "110px",
   display: "flex",
   flexDirection: "column",
-  justifyContent: "center",
+  justifyContent: "space-between",
+  boxShadow: "0 6px 18px rgba(15,23,42,0.04)",
 };
 
 const checkboxStyle: React.CSSProperties = {
