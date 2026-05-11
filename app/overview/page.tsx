@@ -409,7 +409,7 @@ useEffect(() => {
     if (!found) {
       setSelectedSchool(groupedCards[0].school);
       setSelectedDepartmentCard(groupedCards[0].department);
-      setSelectedCategory(groupedCards[0].categories[0] || "");
+      setSelectedCategory("");
     }
   }, [hasActiveFilters, groupedCards, selectedSchool, selectedDepartmentCard]);
 
@@ -424,8 +424,8 @@ useEffect(() => {
       return;
     }
 
-    if (!selectedSchoolCategories.includes(selectedCategory)) {
-      setSelectedCategory(selectedSchoolCategories[0]);
+    if (selectedCategory && !selectedSchoolCategories.includes(selectedCategory)) {
+      setSelectedCategory("");
     }
   }, [selectedSchool, selectedDepartmentCard, selectedSchoolCategories, selectedCategory]);
 
@@ -859,14 +859,14 @@ useEffect(() => {
                           onClick={() => {
                             setSelectedSchool(item.school);
                             setSelectedDepartmentCard(item.department);
-                            setSelectedCategory(item.categories[0] || "");
+                            setSelectedCategory("");
                           }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
                               setSelectedSchool(item.school);
                               setSelectedDepartmentCard(item.department);
-                              setSelectedCategory(item.categories[0] || "");
+                              setSelectedCategory("");
                             }
                           }}
                           style={{
@@ -915,7 +915,7 @@ useEffect(() => {
                                     e.stopPropagation();
                                     setSelectedSchool(item.school);
                                     setSelectedDepartmentCard(item.department);
-                                    setSelectedCategory(cat);
+                                    setSelectedCategory(chipActive ? "" : cat);
                                   }}
                                   style={{
                                     ...categoryChipButtonStyle,
@@ -929,54 +929,42 @@ useEffect(() => {
                               );
                             })}
                           </div>
+
+                          {isActive && selectedDetail ? (
+                            <div style={inlineDetailPanelStyle}>
+                              <div style={inlineDetailHeaderStyle}>
+                                <span>採計倍率</span>
+                                <span style={inlineDetailCategoryStyle}>{selectedCategory}</span>
+                              </div>
+
+                              <div style={inlineScoreGridStyle}>
+                                {scoreFields.map((field) => {
+                                  const n = toNumber(selectedDetail[field]);
+                                  const tone = getHeatTone(n);
+
+                                  return (
+                                    <div
+                                      key={field}
+                                      style={{
+                                        ...inlineScoreItemStyle,
+                                        background: tone.bg,
+                                        borderColor: tone.border,
+                                      }}
+                                    >
+                                      <span style={inlineScoreLabelStyle}>{field}</span>
+                                      <span style={{ ...inlineScoreValueStyle, color: tone.color }}>
+                                        {displayValue(selectedDetail[field])}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       );
                     })}
                   </div>
-
-                  {selectedDetail ? (
-                    <div style={floatingDetailWrapStyle}>
-                      <div style={floatingDetailCardStyle}>
-                        <div style={floatingDetailHeaderStyle}>
-                          <div style={floatingDetailTitleStyle}>群類倍率摘要</div>
-                          <div style={floatingDetailCategoryPillStyle}>{selectedCategory}</div>
-                        </div>
-
-                        <div style={floatingDetailSchoolStyle}>{selectedSchool}</div>
-                        <div style={floatingDetailDepartmentStyle}>{selectedDepartmentCard}</div>
-
-                        <div style={floatingDetailQuotaRowStyle}>
-                          <span style={floatingDetailQuotaLabelStyle}>招生名額</span>
-                          <span style={floatingDetailQuotaValueStyle}>
-                            {toNumber(selectedDetail.一般考生招生名額).toLocaleString()}
-                          </span>
-                        </div>
-
-                        <div style={floatingScoreGridStyle}>
-                          {scoreFields.map((field) => {
-                            const n = toNumber(selectedDetail[field]);
-                            const tone = getHeatTone(n);
-
-                            return (
-                              <div
-                                key={field}
-                                style={{
-                                  ...floatingScoreCardStyle,
-                                  background: tone.bg,
-                                  borderColor: tone.border,
-                                }}
-                              >
-                                <div style={floatingScoreLabelStyle}>{field}</div>
-                                <div style={{ ...floatingScoreValueStyle, color: tone.color }}>
-                                  {displayValue(selectedDetail[field])}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
               )}
             </Card>
@@ -1623,94 +1611,6 @@ const headerInnerStyle: React.CSSProperties = {
   width: "100%",
 };
 
-const overviewBodyStyle: React.CSSProperties = {
-  position: "relative",
-};
-
-const floatingDetailWrapStyle: React.CSSProperties = {
-  position: "fixed",
-  top: "96px",
-  right: "24px",
-  width: "min(420px, calc(100vw - 32px))",
-  zIndex: 60,
-  pointerEvents: "none",
-};
-
-
-const floatingDetailHeaderStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "12px",
-  marginBottom: "12px",
-};
-
-const floatingDetailTitleStyle: React.CSSProperties = {
-  fontSize: "18px",
-  fontWeight: 800,
-  color: "#0f172a",
-};
-
-
-const floatingDetailSchoolStyle: React.CSSProperties = {
-  fontSize: "20px",
-  fontWeight: 800,
-  color: "#0f172a",
-  lineHeight: 1.4,
-};
-
-const floatingDetailQuotaRowStyle: React.CSSProperties = {
-  marginTop: "14px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  borderRadius: "14px",
-  padding: "10px 12px",
-  background: "#f8fbff",
-  border: "1px solid #dbeafe",
-};
-
-const floatingDetailQuotaLabelStyle: React.CSSProperties = {
-  fontSize: "13px",
-  color: "#64748b",
-  fontWeight: 700,
-};
-
-const floatingDetailQuotaValueStyle: React.CSSProperties = {
-  fontSize: "16px",
-  color: "#1d4ed8",
-  fontWeight: 800,
-};
-
-const floatingScoreGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "10px",
-  marginTop: "16px",
-};
-
-const floatingScoreCardStyle: React.CSSProperties = {
-  border: "1px solid",
-  borderRadius: "16px",
-  padding: "14px 12px",
-  minHeight: "88px",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-};
-
-const floatingScoreLabelStyle: React.CSSProperties = {
-  fontSize: "12px",
-  color: "#64748b",
-  marginBottom: "6px",
-  fontWeight: 700,
-};
-
-const floatingScoreValueStyle: React.CSSProperties = {
-  fontSize: "24px",
-  fontWeight: 800,
-  lineHeight: 1.2,
-};
 const navButtonStyle: React.CSSProperties = {
   textDecoration: "none",
   borderRadius: "12px",
@@ -1857,6 +1757,59 @@ const categoryChipButtonStyle: React.CSSProperties = {
   border: "1px solid #e2e8f0",
   background: "#f8fafc",
   cursor: "pointer",
+};
+
+const inlineDetailPanelStyle: React.CSSProperties = {
+  marginTop: "14px",
+  borderTop: "1px solid #e2e8f0",
+  paddingTop: "14px",
+};
+
+const inlineDetailHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "10px",
+  marginBottom: "10px",
+  fontSize: "13px",
+  fontWeight: 800,
+  color: "#334155",
+};
+
+const inlineDetailCategoryStyle: React.CSSProperties = {
+  color: "#2563eb",
+  fontSize: "12px",
+};
+
+const inlineScoreGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gap: "8px",
+};
+
+const inlineScoreItemStyle: React.CSSProperties = {
+  border: "1px solid",
+  borderRadius: "12px",
+  padding: "10px 8px",
+  minHeight: "62px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  alignItems: "center",
+  gap: "4px",
+};
+
+const inlineScoreLabelStyle: React.CSSProperties = {
+  fontSize: "12px",
+  color: "#64748b",
+  fontWeight: 700,
+  lineHeight: 1.2,
+};
+
+const inlineScoreValueStyle: React.CSSProperties = {
+  fontSize: "20px",
+  fontWeight: 800,
+  lineHeight: 1.1,
 };
 
 const detailGridStyle: React.CSSProperties = {
