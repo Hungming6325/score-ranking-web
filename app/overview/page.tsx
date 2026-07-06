@@ -20,16 +20,18 @@ type ScoreField = "國文" | "英文" | "數學" | "專業一" | "專業二";
 type FilterType = "department" | "category" | "school";
 
 const scoreFields: ScoreField[] = ["國文", "英文", "數學", "專業一", "專業二"];
+const availableYears = ["115", "114"] as const;
+type DataYear = (typeof availableYears)[number];
 
 export default function OverviewPage() {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const departmentSearchRef = useRef<HTMLDivElement | null>(null);
   const categorySearchRef = useRef<HTMLDivElement | null>(null);
   const schoolSearchRef = useRef<HTMLDivElement | null>(null);
 
   const [rows, setRows] = useState<OverviewRow[]>([]);
-  const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
+  const [selectedYear, setSelectedYear] = useState<DataYear>("115");
+  const [isLoadingYear, setIsLoadingYear] = useState(false);
 
   const [departmentKeyword, setDepartmentKeyword] = useState("");
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
@@ -49,108 +51,52 @@ export default function OverviewPage() {
   const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const loadCsv = async () => {
+      setError("");
+      setIsLoadingYear(true);
       try {
-        const res = await fetch("/114全國一階篩選倍率.csv");
+        const file = `${selectedYear}全國一階篩選倍率.csv`;
+        const res = await fetch(`/${file}`);
+        if (!res.ok) throw new Error("載入失敗");
         const text = await res.text();
 
         Papa.parse<OverviewRow>(text, {
           header: true,
           skipEmptyLines: true,
           complete: (result) => {
+            if (cancelled) return;
             const cleaned = normalizeRows(result.data || []);
 
             if (!cleaned.length) {
               setRows([]);
               setError("沒有資料");
+              setIsLoadingYear(false);
               return;
             }
 
             setRows(cleaned);
-            setFileName("114全國一階篩選倍率.csv");
             setError("");
+            setIsLoadingYear(false);
           },
           error: () => {
+            if (cancelled) return;
             setRows([]);
             setError("讀取失敗");
+            setIsLoadingYear(false);
           },
         });
       } catch {
+        if (cancelled) return;
         setRows([]);
-        setError("無法載入雲端檔案");
+        setError(`無法載入 ${selectedYear} 年度倍率資料`);
+        setIsLoadingYear(false);
       }
     };
 
     loadCsv();
-  }, []);
-
-  const parseCsvFile = (file: File) => {
-    Papa.parse<OverviewRow>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (result) => {
-        const cleaned = normalizeRows(result.data || []);
-
-        if (!cleaned.length) {
-          setRows([]);
-          setError("沒有資料");
-          return;
-        }
-
-        const requiredColumns = [
-          "學校",
-          "招生系科",
-          "招生群類別",
-          "一般考生招生名額",
-          "國文",
-          "英文",
-          "數學",
-          "專業一",
-          "專業二",
-        ];
-
-        const firstRow = cleaned[0] as Record<string, unknown>;
-        const missingColumns = requiredColumns.filter((col) => !(col in firstRow));
-
-        if (missingColumns.length > 0) {
-          setRows([]);
-          setError(`缺少欄位：${missingColumns.join("、")}`);
-          return;
-        }
-
-        setRows(cleaned);
-        setFileName(file.name);
-        setError("");
-
-        setDepartmentKeyword("");
-        setSelectedDepartments([]);
-
-        setCategoryKeyword("");
-        setSelectedCategories([]);
-
-        setSchoolKeyword("");
-        setSelectedSchools([]);
-
-        setSelectedSchool("");
-        setSelectedDepartmentCard("");
-        setSelectedCategory("");
-
-        setShowDepartmentDropdown(false);
-        setShowCategoryDropdown(false);
-        setShowSchoolDropdown(false);
-      },
-      error: () => {
-        setRows([]);
-        setError("讀取失敗");
-      },
-    });
-  };
-
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    parseCsvFile(file);
-  };
+    return () => { cancelled = true; };
+  }, [selectedYear]);
 
   const allDepartmentOptions = useMemo(() => {
     return uniqueSorted(rows.map((r) => String(r.招生系科 ?? "").trim()).filter(Boolean));
@@ -230,27 +176,6 @@ export default function OverviewPage() {
     );
   }, [rowsForSchoolOptions]);
 
-useEffect(() => {
-  setSelectedDepartments((prev) => {
-    const next = prev.filter((item) => departmentOptions.includes(item));
-    return isSameStringArray(prev, next) ? prev : next;
-  });
-}, [departmentOptions]);
-
-useEffect(() => {
-  setSelectedCategories((prev) => {
-    const next = prev.filter((item) => categoryOptions.includes(item));
-    return isSameStringArray(prev, next) ? prev : next;
-  });
-}, [categoryOptions]);
-
-useEffect(() => {
-  setSelectedSchools((prev) => {
-    const next = prev.filter((item) => schoolOptions.includes(item));
-    return isSameStringArray(prev, next) ? prev : next;
-  });
-}, [schoolOptions]);
-
   const filteredDepartmentOptions = useMemo(() => {
     const keyword = departmentKeyword.trim();
     const base = keyword
@@ -282,8 +207,6 @@ useEffect(() => {
     selectedSchools.length > 0;
 
   const filteredRows = useMemo(() => {
-    if (!hasActiveFilters) return [];
-
     return rows.filter((row) => {
       const department = String(row.招生系科 ?? "").trim();
       const category = String(row.招生群類別 ?? "").trim();
@@ -297,7 +220,7 @@ useEffect(() => {
 
       return departmentMatched && categoryMatched && schoolMatched;
     });
-  }, [rows, selectedDepartments, selectedCategories, selectedSchools, hasActiveFilters]);
+  }, [rows, selectedDepartments, selectedCategories, selectedSchools]);
 
   const groupedCards = useMemo(() => {
     const map = new Map<
@@ -388,13 +311,6 @@ useEffect(() => {
   }, [selectedSchool, selectedDepartmentCard, selectedCategory, selectedSchoolRows]);
 
   useEffect(() => {
-    if (!hasActiveFilters) {
-      setSelectedSchool("");
-      setSelectedDepartmentCard("");
-      setSelectedCategory("");
-      return;
-    }
-
     if (groupedCards.length === 0) {
       setSelectedSchool("");
       setSelectedDepartmentCard("");
@@ -411,7 +327,7 @@ useEffect(() => {
       setSelectedDepartmentCard(groupedCards[0].department);
       setSelectedCategory("");
     }
-  }, [hasActiveFilters, groupedCards, selectedSchool, selectedDepartmentCard]);
+  }, [groupedCards, selectedSchool, selectedDepartmentCard]);
 
   useEffect(() => {
     if (!selectedSchool || !selectedDepartmentCard) {
@@ -521,21 +437,22 @@ useEffect(() => {
 
         <div style={layoutStyle}>
           <aside style={sidebarStyle}>
-            <Panel title="資料上傳">
-              <UploadCard
-                title="倍率資料"
-                buttonLabel="選擇檔案"
-                onClick={() => fileInputRef.current?.click()}
-                isReady={!!fileName}
-                accent="#2563eb"
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleFile}
-                style={{ display: "none" }}
-              />
+            <Panel title="資料年度">
+              <div style={fieldBlockStyle}>
+                <label style={fieldLabelStyle}>選擇年度</label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value as DataYear)}
+                  style={searchInputStyle}
+                >
+                  {availableYears.map((year) => <option key={year} value={year}>{year} 年度</option>)}
+                </select>
+                <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.6 }}>
+                  {isLoadingYear
+                    ? `正在載入 ${selectedYear} 年度資料…`
+                    : "切換年度時會保留目前的搜尋與篩選條件。"}
+                </div>
+              </div>
               {error ? <div style={errorStyle}>{error}</div> : null}
             </Panel>
 
@@ -839,9 +756,7 @@ useEffect(() => {
                 </div>
               }
             >
-              {!hasActiveFilters ? (
-                <div style={emptyStateStyle}>請先在左側選擇任一條件。</div>
-              ) : groupedCards.length === 0 ? (
+              {groupedCards.length === 0 ? (
                 <div style={emptyStateStyle}>查無符合資料。</div>
               ) : (
                 <div style={overviewBodyStyle}>
@@ -1005,62 +920,6 @@ function Card({
     </section>
   );
 }
-function isSameStringArray(a: string[], b: string[]) {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
-}
-
-function UploadCard({
-  title,
-  buttonLabel,
-  onClick,
-  isReady,
-  accent,
-}: {
-  title: string;
-  buttonLabel: string;
-  onClick: () => void;
-  isReady: boolean;
-  accent: string;
-}) {
-  return (
-    <div style={uploadCardStyle}>
-      <div
-        style={{
-          ...uploadIconStyle,
-          background: `${accent}18`,
-          color: accent,
-        }}
-      >
-        📄
-      </div>
-
-      <div style={uploadContentStyle}>
-        <div style={uploadTopRowStyle}>
-          <div style={uploadCardTitleStyle}>{title}</div>
-          <div
-            style={{
-              ...uploadStatusStyle,
-              background: isReady ? "#dcfce7" : "#eef2f7",
-              color: isReady ? "#166534" : "#64748b",
-            }}
-          >
-            {isReady ? "已上傳" : "待上傳"}
-          </div>
-        </div>
-
-        <button onClick={onClick} style={uploadButtonStyle}>
-          {buttonLabel}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function normalizeRows(data: OverviewRow[]): OverviewRow[] {
   return (data || [])
     .filter((row) => Object.values(row).some((v) => String(v ?? "").trim() !== ""))
@@ -1478,70 +1337,6 @@ const overviewMetricValueStyle: React.CSSProperties = {
   fontSize: "28px",
   fontWeight: 800,
   lineHeight: 1.1,
-};
-
-const uploadCardStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "10px",
-  alignItems: "stretch",
-  padding: "10px",
-  border: "1px solid #e2e8f0",
-  borderRadius: "16px",
-  background: "#fbfdff",
-};
-
-const uploadIconStyle: React.CSSProperties = {
-  width: "42px",
-  height: "42px",
-  borderRadius: "12px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: "18px",
-  flexShrink: 0,
-};
-
-const uploadContentStyle: React.CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  display: "flex",
-  flexDirection: "column",
-  gap: "10px",
-};
-
-const uploadTopRowStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "8px",
-};
-
-const uploadCardTitleStyle: React.CSSProperties = {
-  fontSize: "16px",
-  fontWeight: 800,
-  color: "#0f172a",
-  lineHeight: 1.2,
-};
-
-const uploadStatusStyle: React.CSSProperties = {
-  borderRadius: "999px",
-  padding: "5px 10px",
-  fontSize: "14px",
-  fontWeight: 800,
-  flexShrink: 0,
-};
-
-const uploadButtonStyle: React.CSSProperties = {
-  width: "100%",
-  border: "none",
-  borderRadius: "10px",
-  background: "#eef4ff",
-  color: "#2563eb",
-  fontWeight: 800,
-  fontSize: "14px",
-  padding: "8px 10px",
-  cursor: "pointer",
-  lineHeight: 1.2,
 };
 
 const errorStyle: React.CSSProperties = {

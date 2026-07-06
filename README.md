@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 甄選入學成績倍率篩選系統
 
-## Getting Started
+以 Next.js 建置的技專校院甄選入學倍率與成績分布模擬工具，支援 114、115 年度資料、Bootstrap 樣本補足及跨校倍率查詢。
 
-First, run the development server:
+## 本機執行
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+開啟 [http://localhost:3000](http://localhost:3000)。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 正式建置
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+```
 
-## Learn More
+## 內建資料
 
-To learn more about Next.js, take a look at the following resources:
+Vercel 部署所需的年度資料位於 `public/`：
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `114全國一階篩選倍率.csv`
+- `114_全國類群成績.csv`
+- `115全國一階篩選倍率.csv`
+- `115_全國類群成績.csv`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+甄選成績由使用者在網頁中上傳，不納入儲存庫。
 
-## Deploy on Vercel
+## Vercel 部署
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+將儲存庫連結至 Vercel 後，使用預設 Next.js 設定即可部署。推送到 Vercel 追蹤的 GitHub 分支會自動觸發更新。

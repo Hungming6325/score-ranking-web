@@ -24,3 +24,28 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media (min-width: 901px) {
+  .simulation-sidebar {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+  }
+}
+
+@media (max-width: 900px) {
+  .simulation-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .distribution-stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  .chart-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

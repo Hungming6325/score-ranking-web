@@ -15,6 +15,7 @@ type ParentRowData = {
 };
 
 type SelectionRowData = {
+  學校?: string;
   招生系科?: string;
   招生群類別?: string;
   國文: number | string;
@@ -22,9 +23,11 @@ type SelectionRowData = {
   數學: number | string;
   專業一: number | string;
   專業二: number | string;
+  __synthetic?: boolean;
 };
 
 type ConfigRow = {
+  學校: string;
   招生系科: string;
   招生群類別: string;
   一般考生招生名額: string | number;
@@ -52,11 +55,12 @@ type HistogramBin = {
 };
 
 const scoreFields: FilterField[] = ["國文", "英文", "數學", "專業一", "專業二"];
+const availableYears = ["115", "114"] as const;
+type DataYear = (typeof availableYears)[number];
 
 export default function Home() {
-  const configFileInputRef = useRef<HTMLInputElement | null>(null);
-  const parentFileInputRef = useRef<HTMLInputElement | null>(null);
   const selectionFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedYear, setSelectedYear] = useState<DataYear>("115");
 
   const [configData, setConfigData] = useState<ConfigRow[]>([]);
   const [parentData, setParentData] = useState<ParentRowData[]>([]);
@@ -218,13 +222,42 @@ const parseCsvUrl = async <T extends Record<string, unknown>>(
   }
 };
 useEffect(() => {
-  const loadParentData = async () => {
-    setError("");
+  let cancelled = false;
 
-    const parentParsed = await parseCsvUrl<ParentRowData>(
-      "/全國類群成績_114.csv",
-      ["招生群類別", "成績區間", "國文", "英文", "數學", "專業一", "專業二"]
-    );
+  const loadDefaultData = async () => {
+    setError("");
+    setConfigData([]);
+    setParentData([]);
+    setConfigFileName("");
+    setParentFileName("");
+    setSelectionData([]);
+    setSelectionFileName("");
+    if (selectionFileInputRef.current) selectionFileInputRef.current.value = "";
+    setSelectedDepartment("");
+    setSelectedCategory("");
+    resetSimulationState();
+
+    const [configParsed, parentParsed] = await Promise.all([
+      parseCsvUrl<ConfigRow>(`/${selectedYear}全國一階篩選倍率.csv`, [
+        "學校", "招生系科", "招生群類別", "一般考生招生名額",
+        "國文", "英文", "數學", "專業一", "專業二",
+      ]),
+      parseCsvUrl<ParentRowData>(`/${selectedYear}_全國類群成績.csv`, [
+        "招生群類別", "成績區間", "國文", "英文", "數學", "專業一", "專業二",
+      ]),
+    ]);
+
+    if (cancelled) return;
+
+    if (configParsed.ok) {
+      setConfigData(configParsed.rows.map((row) => ({
+        ...row,
+        學校: String(row.學校 ?? "").trim(),
+        招生系科: String(row.招生系科 ?? "").trim(),
+        招生群類別: String(row.招生群類別 ?? "").trim(),
+      })));
+      setConfigFileName(`${selectedYear}全國一階篩選倍率.csv`);
+    }
 
     if (parentParsed.ok) {
       const cleaned = parentParsed.rows.map((row) => ({
@@ -234,84 +267,19 @@ useEffect(() => {
       }));
 
       setParentData(cleaned);
-      setParentFileName("全國類群成績_114.csv"); 
-    } else {
-      setParentData([]);
-      setError(`全國成績檔：${parentParsed.error}`);
+      setParentFileName(`${selectedYear}_全國類群成績.csv`);
     }
+
+    const errors = [
+      !configParsed.ok ? `倍率資料：${configParsed.error}` : "",
+      !parentParsed.ok ? `全國成績：${parentParsed.error}` : "",
+    ].filter(Boolean);
+    setError(errors.join("；"));
   };
 
-  loadParentData();
-}, []);
-
-  
-
-  const handleConfigFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setConfigFileName(file.name);
-
-    parseCsvFile<ConfigRow>(
-      file,
-      [
-        "招生系科",
-        "招生群類別",
-        "一般考生招生名額",
-        "國文",
-        "英文",
-        "數學",
-        "專業一",
-        "專業二",
-      ],
-      (parsed) => {
-        if (!parsed.ok) {
-          setConfigData([]);
-          setError(parsed.error || "倍率設定檔讀取失敗");
-          return;
-        }
-
-        const cleaned = parsed.rows.map((row) => ({
-          ...row,
-          招生系科: String(row.招生系科 ?? "").trim(),
-          招生群類別: String(row.招生群類別 ?? "").trim(),
-        }));
-
-        setConfigData(cleaned);
-        setSelectedDepartment("");
-        setSelectedCategory("");
-        resetSimulationState();
-      }
-    );
-  };
-
-  const handleParentFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setParentFileName(file.name);
-
-    parseCsvFile<ParentRowData>(
-      file,
-      ["招生群類別", "成績區間", "國文", "英文", "數學", "專業一", "專業二"],
-      (parsed) => {
-        if (!parsed.ok) {
-          setParentData([]);
-          setError(parsed.error || "全國成績檔案讀取失敗");
-          return;
-        }
-
-        const cleaned = parsed.rows.map((row) => ({
-          ...row,
-          招生群類別: String(row.招生群類別 ?? "").trim(),
-          成績區間: String(row.成績區間 ?? "").trim(),
-        }));
-
-        setParentData(cleaned);
-        resetSimulationOutput();
-      }
-    );
-  };
+  loadDefaultData();
+  return () => { cancelled = true; };
+}, [selectedYear]);
 
   const handleSelectionFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -331,51 +299,88 @@ useEffect(() => {
 
         const cleaned = parsed.rows.map((r) => ({
           ...r,
+          學校: String(r.學校 ?? "").trim(),
           招生系科: String(r.招生系科 ?? "").trim(),
           招生群類別: String(r.招生群類別 ?? "").trim(),
         }));
 
         setSelectionData(cleaned);
-        resetSimulationOutput();
+        setSelectedDepartment("");
+        setSelectedCategory("");
+        resetSimulationState();
       }
     );
   };
 
   const departmentOptions = useMemo(() => {
-    return [...new Set(configData.map((row) => row.招生系科).filter(Boolean))];
-  }, [configData]);
+    return [...new Set(
+      selectionData
+        .map((row) => String(row.招生系科 ?? "").trim())
+        .filter(Boolean)
+    )];
+  }, [selectionData]);
+
+  const inferredSchool = useMemo(() => {
+    const explicitSchools = [...new Set(
+      selectionData.map((row) => String(row.學校 ?? "").trim()).filter(Boolean)
+    )];
+    if (explicitSchools.length === 1) return explicitSchools[0];
+
+    const uploadedKeys = new Set(
+      selectionData.map((row) =>
+        `${String(row.招生系科 ?? "").trim()}__${String(row.招生群類別 ?? "").trim()}`
+      )
+    );
+    const scores = new Map<string, number>();
+    configData.forEach((row) => {
+      if (uploadedKeys.has(`${row.招生系科}__${row.招生群類別}`)) {
+        scores.set(row.學校, (scores.get(row.學校) ?? 0) + 1);
+      }
+    });
+
+    const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+    if (!ranked.length || (ranked[1] && ranked[0][1] === ranked[1][1])) return "";
+    return ranked[0][0];
+  }, [configData, selectionData]);
 
   const categoryOptions = useMemo(() => {
-  // 如果已經有倍率設定檔，優先用倍率設定檔的群類別
-  if (configData.length > 0) {
     const rows = selectedDepartment
-      ? configData.filter((row) => row.招生系科 === selectedDepartment)
-      : configData;
-
-    return [...new Set(rows.map((row) => row.招生群類別).filter(Boolean))];
-  }
-
-  // 如果還沒上傳倍率設定檔，就先用全國類群成績的群類別
-  return [
-    ...new Set(
-      parentData
-        .map((row) => String(row.招生群類別 ?? "").trim())
-        .filter(Boolean)
-    ),
-  ];
-}, [configData, parentData, selectedDepartment]);
+      ? selectionData.filter((row) => String(row.招生系科 ?? "").trim() === selectedDepartment)
+      : selectionData;
+    return [...new Set(
+      rows.map((row) => String(row.招生群類別 ?? "").trim()).filter(Boolean)
+    )];
+  }, [selectionData, selectedDepartment]);
 
   const selectedConfig = useMemo(() => {
-    if (!selectedDepartment || !selectedCategory) return null;
+    if (!inferredSchool || !selectedDepartment || !selectedCategory) return null;
 
     return (
       configData.find(
         (row) =>
+          row.學校 === inferredSchool &&
           row.招生系科 === selectedDepartment &&
           row.招生群類別 === selectedCategory
       ) || null
     );
-  }, [configData, selectedDepartment, selectedCategory]);
+  }, [configData, inferredSchool, selectedDepartment, selectedCategory]);
+
+  useEffect(() => {
+    if (!selectedConfig) return;
+
+    setQuota(toMultiplierNumber(selectedConfig.一般考生招生名額));
+    setMultiplier({
+      國文: toMultiplierNumber(selectedConfig.國文),
+      英文: toMultiplierNumber(selectedConfig.英文),
+      數學: toMultiplierNumber(selectedConfig.數學),
+      專業一: toMultiplierNumber(selectedConfig.專業一),
+      專業二: toMultiplierNumber(selectedConfig.專業二),
+    });
+    setResult([]);
+    setSteps([]);
+    setHasSimulationRun(false);
+    setError("");
+  }, [selectedConfig]);
 
   const linkedSelectionData = useMemo(() => {
     if (!selectedDepartment || !selectedCategory) return [];
@@ -395,23 +400,33 @@ useEffect(() => {
     );
   }, [parentData, selectedCategory]);
 
+  const displayedParentData = useMemo(() => {
+    return selectedCategory ? linkedParentData : parentData;
+  }, [linkedParentData, parentData, selectedCategory]);
+
   const activeFilters = useMemo(() => {
     return scoreFields
       .map((field) => ({
         field,
         times: Number(multiplier[field] || 0),
       }))
-      .filter((item) => item.times >= 3);
+      .filter((item) => item.times > 0);
   }, [multiplier]);
 
-  const canRunSimulation =
-    !!configData.length &&
-    !!parentData.length &&
-    !!selectionData.length &&
-    !!selectedDepartment &&
-    !!selectedCategory &&
-    quota > 0 &&
-    activeFilters.length > 0;
+  const simulationBlockers = [
+    !parentData.length ? "年度全國成績尚未載入" : "",
+    !selectionData.length ? "請先上傳甄選成績檔" : "",
+    !selectedDepartment ? "請先選擇招生系科" : "",
+    !selectedCategory ? "請先選擇招生群類別" : "",
+    selectedCategory && !linkedParentData.length ? "此群類沒有全國成績資料" : "",
+    selectedDepartment && selectedCategory && !linkedSelectionData.length
+      ? "上傳檔中沒有此系科與群類的考生成績"
+      : "",
+    quota <= 0 ? "招生人數必須大於 0" : "",
+    activeFilters.length === 0 ? "至少需要一個大於 0 的科目倍率" : "",
+  ].filter(Boolean);
+
+  const canRunSimulation = simulationBlockers.length === 0;
 
   const calculate = () => {
     setError("");
@@ -419,13 +434,8 @@ useEffect(() => {
     setResult([]);
     setHasSimulationRun(false);
 
-    if (!configData.length) {
-      setError("請先上傳倍率設定檔");
-      return;
-    }
-
     if (!parentData.length) {
-      setError("請先上傳全國成績檔案");
+      setError("年度全國成績尚未載入完成");
       return;
     }
 
@@ -455,11 +465,14 @@ useEffect(() => {
     }
 
     if (!quota || quota <= 0 || activeFilters.length === 0) {
-      setError("請先設定招生人數，並至少填入一個倍率 ≥ 3 的科目");
+      setError("請先設定招生人數，並至少填入一個大於 0 的科目倍率");
       return;
     }
 
     let workingList = [...linkedSelectionData];
+    const random = createSeededRandom(
+      `${selectedYear}|${selectedDepartment}|${selectedCategory}|${quota}|${JSON.stringify(multiplier)}`
+    );
 
     const groupedByTimes = [...new Set(activeFilters.map((x) => x.times))]
       .sort((a, b) => b - a)
@@ -471,7 +484,17 @@ useEffect(() => {
     const processSteps: string[] = [];
 
     for (const group of groupedByTimes) {
-      const limit = quota * group.times;
+      const limit = Math.ceil(quota * group.times);
+      let bootstrapAdded = 0;
+
+      if (workingList.length < limit) {
+        const bootstrapSource = [...workingList];
+        while (workingList.length < limit) {
+          const sampled = bootstrapSource[Math.floor(random() * bootstrapSource.length)];
+          workingList.push({ ...sampled, __synthetic: true });
+          bootstrapAdded += 1;
+        }
+      }
 
       const sorted = workingList
         .map((row) => ({
@@ -495,7 +518,9 @@ useEffect(() => {
           : `${group.fields.join(" + ")}`;
 
       processSteps.push(
-        `倍率 ${group.times}：${fieldLabel} 加總篩選，保留前 ${limit} 人，目前剩 ${workingList.length} 人`
+        `倍率 ${group.times}：${fieldLabel} 加總篩選，目標 ${limit} 人；` +
+        `${bootstrapAdded > 0 ? `Bootstrap 補足 ${bootstrapAdded} 人；` : ""}` +
+        `固定保留 ${workingList.length} 人建立模擬分布`
       );
     }
 
@@ -504,14 +529,20 @@ useEffect(() => {
     setHasSimulationRun(true);
   };
 
-  const parentDisplayCount = useMemo(() => {
-    if (!linkedParentData.length) return 0;
-    return sumParentDistributionCounts(linkedParentData, "國文");
-  }, [linkedParentData]);
-
   const selectionDisplayCount = useMemo(() => {
     return linkedSelectionData.length;
   }, [linkedSelectionData]);
+
+  const finalMultiplier = activeFilters.length
+    ? Math.min(...activeFilters.map((item) => item.times))
+    : 0;
+  const finalTargetCount = quota > 0 && finalMultiplier > 0
+    ? Math.ceil(quota * finalMultiplier)
+    : 0;
+  const activeFilterLabel = activeFilters.length
+    ? activeFilters.map((item) => `${item.field} ${item.times}倍`).join("＋")
+    : "尚未設定倍率";
+  const syntheticResultCount = result.filter((row) => row.__synthetic).length;
 
   return (
     <main style={pageStyle}>
@@ -532,51 +563,41 @@ useEffect(() => {
 </header>
 
         <div style={stepBarStyle}>
-          <StepPill index={1} label="上傳倍率" status={configFileName ? "done" : "idle"} />
+          <StepPill index={1} label="選擇年度" status={configFileName && parentFileName ? "done" : "current"} />
           <StepConnector />
           <StepPill
             index={2}
-            label="上傳全國成績"
-            status={parentFileName ? "done" : "idle"}
-          />
-          <StepConnector />
-          <StepPill
-            index={3}
             label="上傳甄選成績"
             status={selectionFileName ? "done" : "idle"}
           />
           <StepConnector />
           <StepPill
-            index={4}
+            index={3}
             label="選擇系群條件"
-            status={selectedDepartment && selectedCategory ? "current" : "idle"}
+            status={selectedDepartment && selectedCategory ? "done" : "idle"}
           />
           <StepConnector />
           <StepPill
-            index={5}
+            index={4}
             label="執行模擬"
             status={hasSimulationRun ? "done" : "idle"}
           />
         </div>
 
-        <div style={layoutStyle}>
-<aside style={sidebarStyle}>
-  <Panel title="資料上傳">
+        <div className="simulation-layout" style={layoutStyle}>
+<aside className="simulation-sidebar" style={sidebarStyle}>
+  <Panel title="資料設定">
     <div style={stackStyle}>
-      <UploadCard
-        title="學校倍率設定"
-        buttonLabel="選擇倍率設定檔"
-        onClick={() => configFileInputRef.current?.click()}
-        isReady={!!configFileName}
-        accent="#3b82f6"
-      />
-      <UploadCard
-        title="全國類群成績"
-        buttonLabel="選擇全國成績檔案"
-        onClick={() => parentFileInputRef.current?.click()}
-        isReady={!!parentFileName}
-        accent="#10b981"
-      />
+      <div style={fieldBlockStyle}>
+        <label style={fieldLabelStyle}>資料年度</label>
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value as DataYear)}
+          style={selectStyle}
+        >
+          {availableYears.map((year) => <option key={year} value={year}>{year} 年度</option>)}
+        </select>
+      </div>
       <UploadCard
         title="學校甄選成績"
         buttonLabel="選擇甄選成績檔"
@@ -586,20 +607,6 @@ useEffect(() => {
       />
     </div>
 
-    <input
-      ref={configFileInputRef}
-      type="file"
-      accept=".csv"
-      onChange={handleConfigFile}
-      style={{ display: "none" }}
-    />
-    <input
-      ref={parentFileInputRef}
-      type="file"
-      accept=".csv"
-      onChange={handleParentFile}
-      style={{ display: "none" }}
-    />
     <input
       ref={selectionFileInputRef}
       type="file"
@@ -623,7 +630,7 @@ useEffect(() => {
           }
         }}
         style={selectStyle}
-        disabled={!configData.length}
+        disabled={!selectionData.length}
       >
         <option value="">請選擇系科</option>
         {departmentOptions.map((item) => (
@@ -646,7 +653,7 @@ useEffect(() => {
           }
         }}
         style={selectStyle}
-disabled={configData.length > 0 ? !selectedDepartment : !parentData.length}
+        disabled={!selectedDepartment}
       >
         <option value="">請選擇群類別</option>
         {categoryOptions.map((item) => (
@@ -676,7 +683,7 @@ disabled={configData.length > 0 ? !selectedDepartment : !parentData.length}
     <div style={dividerStyle} />
 
     <div style={{ marginBottom: 10 }}>
-      <div style={subSectionLabelStyle}>倍率設定（需 ≥ 3 才生效）</div>
+      <div style={subSectionLabelStyle}>倍率設定</div>
     </div>
 
     <div style={ratioGridStyle}>
@@ -714,7 +721,7 @@ disabled={configData.length > 0 ? !selectedDepartment : !parentData.length}
     </button>
 
     {!canRunSimulation && (
-      <div style={mutedHintStyle}>請確認檔案、系群條件、招生人數與倍率設定</div>
+      <div style={mutedHintStyle}>{simulationBlockers[0]}</div>
     )}
 
     {error && <div style={errorStyle}>{error}</div>}
@@ -723,67 +730,62 @@ disabled={configData.length > 0 ? !selectedDepartment : !parentData.length}
 
 
           <section style={contentStyle}>
-            <Card title="招生條件摘要">
-              {selectedConfig ? (
-                <div style={summaryInfoGridStyle}>
-                  <InfoMiniCard
-                    label="原始招生名額"
-                    value={toMultiplierNumber(selectedConfig["一般考生招生名額"])}
-                    tone="default"
-                  />
-                  <InfoMiniCard
-                    label="國文倍率"
-                    value={toMultiplierNumber(selectedConfig["國文"])}
-                    tone="red"
-                  />
-                  <InfoMiniCard
-                    label="英文倍率"
-                    value={toMultiplierNumber(selectedConfig["英文"])}
-                    tone="orange"
-                  />
-                  <InfoMiniCard
-                    label="數學倍率"
-                    value={toMultiplierNumber(selectedConfig["數學"])}
-                    tone="blue"
-                  />
-                  <InfoMiniCard
-                    label="專業一倍率"
-                    value={toMultiplierNumber(selectedConfig["專業一"])}
-                    tone="violet"
-                  />
-                  <InfoMiniCard
-                    label="專業二倍率"
-                    value={toMultiplierNumber(selectedConfig["專業二"])}
-                    tone="green"
-                  />
-                </div>
-              ) : (
-                <div style={emptyStateStyle}>
-                  請先完成三份檔案上傳，並選擇招生系科與招生群類別。
-                </div>
-              )}
-            </Card>
-
             <Card title="篩選結果統計">
               <div style={summaryRowStyle}>
                 <SummaryBox
-                  label="全國人數"
-                  value={parentDisplayCount}
-                  tone="blue"
-                  sublabel="群類總人數"
-                />
-                <SummaryBox
-                  label="甄選人數"
+                  label="未篩選甄選人數"
                   value={selectionDisplayCount}
-                  tone="violet"
-                  sublabel="二階報名考生"
+                  tone="blue"
+                  sublabel="上傳檔中的模擬母體"
                 />
                 <SummaryBox
-                  label="篩選後人數"
+                  label="最終篩選目標"
+                  value={finalTargetCount}
+                  tone="violet"
+                  sublabel={finalMultiplier > 0
+                    ? `招生 ${quota} × 最終倍率 ${finalMultiplier}`
+                    : "請設定招生人數與倍率"}
+                />
+                <SummaryBox
+                  label="模擬篩選後人數"
                   value={hasSimulationRun ? result.length : 0}
                   tone="green"
-                  sublabel={hasSimulationRun ? "模擬完成" : "尚未執行"}
+                  sublabel={hasSimulationRun
+                    ? syntheticResultCount > 0
+                      ? `含 Bootstrap 推估 ${syntheticResultCount} 人`
+                      : `目標 ${finalTargetCount} 人`
+                    : "尚未執行"}
                 />
+              </div>
+
+              <div style={scenarioBannerStyle}>
+                <div style={scenarioBannerTopStyle}>
+                  <div>
+                    <div style={scenarioEyebrowStyle}>目前模擬情境</div>
+                    <div style={scenarioTitleStyle}>
+                      {selectedDepartment && selectedCategory
+                        ? `${selectedDepartment}｜${selectedCategory}`
+                        : "選擇系科與群類後建立情境"}
+                    </div>
+                  </div>
+                  <span style={{
+                    ...scenarioStatusStyle,
+                    background: hasSimulationRun ? "#dcfce7" : "#f1f5f9",
+                    color: hasSimulationRun ? "#166534" : "#64748b",
+                  }}>
+                    {hasSimulationRun ? "模擬完成" : "尚未模擬"}
+                  </span>
+                </div>
+                <div style={scenarioMetaStyle}>
+                  <span>{selectedYear} 年度</span>
+                  {inferredSchool && <span>{inferredSchool}</span>}
+                  <span>招生 {quota || 0} 人</span>
+                  <span>{activeFilterLabel}</span>
+                  <span>原始 {selectionDisplayCount} 人 → 目標 {finalTargetCount} 人</span>
+                  {hasSimulationRun && syntheticResultCount > 0 && (
+                    <span>Bootstrap 推估 {syntheticResultCount} 人</span>
+                  )}
+                </div>
               </div>
 
               {steps.length > 0 && (
@@ -802,22 +804,28 @@ disabled={configData.length > 0 ? !selectedDepartment : !parentData.length}
 
               <div style={legendRowStyle}>
                 <LegendBox color="rgba(110, 193, 255, 0.30)" label="全國成績分布" />
-                <LegendBox color="rgba(245, 183, 32, 0.75)" label="未篩選甄選成績分布" />
-                <LegendBox color="rgba(51, 96, 255, 0.82)" label="篩選後成績分布" />
+                <LegendBox color="#f97316" label="甄選成績分布" />
+                <LegendBox
+                  color="#2563eb"
+                  label={syntheticResultCount > 0
+                    ? "模擬成績分布（含 Bootstrap 推估）"
+                    : "模擬成績分布"}
+                />
               </div>
             </Card>
 
             <div style={chartsSectionTitleStyle}>各科成績分布</div>
 
-            <div style={chartGridStyle}>
+            <div className="chart-grid" style={chartGridStyle}>
               {scoreFields.map((field) => (
                 <OverlayHistogramCard
                   key={field}
                   title={field}
-                  parentRows={linkedParentData}
+                  parentRows={displayedParentData}
                   selectionRawRows={linkedSelectionData}
                   selectionFilteredRows={hasSimulationRun ? result : []}
                   field={field}
+                  deduplicateDistributions={selectedYear === "115" && !selectedCategory}
                 />
               ))}
             </div>
@@ -909,32 +917,6 @@ function UploadCard({
     </div>
   );
 }
-function InfoMiniCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "default" | "red" | "orange" | "blue" | "violet" | "green";
-}) {
-  const toneMap = {
-    default: { bg: "#f8fafc", color: "#0f172a" },
-    red: { bg: "#fff1f2", color: "#dc2626" },
-    orange: { bg: "#fff7ed", color: "#ea580c" },
-    blue: { bg: "#eff6ff", color: "#2563eb" },
-    violet: { bg: "#f5f3ff", color: "#7c3aed" },
-    green: { bg: "#ecfdf5", color: "#059669" },
-  };
-
-  return (
-    <div style={{ ...infoMiniCardStyle, background: toneMap[tone].bg }}>
-      <div style={infoMiniLabelStyle}>{label}</div>
-      <div style={{ ...infoMiniValueStyle, color: toneMap[tone].color }}>{value}</div>
-    </div>
-  );
-}
-
 function StepPill({
   index,
   label,
@@ -1047,21 +1029,43 @@ function LegendBox({ color, label }: { color: string; label: string }) {
   );
 }
 
+function createSeededRandom(seedText: string) {
+  let seed = 2166136261;
+  for (let i = 0; i < seedText.length; i += 1) {
+    seed ^= seedText.charCodeAt(i);
+    seed = Math.imul(seed, 16777619);
+  }
+
+  return () => {
+    seed += 0x6d2b79f5;
+    let value = seed;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function OverlayHistogramCard({
   title,
   parentRows,
   selectionRawRows,
   selectionFilteredRows,
   field,
+  deduplicateDistributions,
 }: {
   title: string;
   parentRows: ParentRowData[];
   selectionRawRows: SelectionRowData[];
   selectionFilteredRows: SelectionRowData[];
   field: FilterField;
+  deduplicateDistributions: boolean;
 }) {
+  const normalizedParentRows = deduplicateDistributions
+    ? deduplicateParentDistributions(parentRows, field)
+    : parentRows;
+
   const bins = buildOverlayBins(
-    parentRows,
+    normalizedParentRows,
     selectionRawRows,
     selectionFilteredRows,
     field
@@ -1078,8 +1082,9 @@ function OverlayHistogramCard({
 
   const areaPath = buildAreaPath(bins, leftMaxCount);
 
-  const parentStats = computeParentStats(parentRows, field);
+  const parentStats = computeParentStats(normalizedParentRows, field);
   const selectionStats = computeSelectionStats(selectionRawRows, field);
+  const filteredStats = computeSelectionStats(selectionFilteredRows, field);
 
   return (
     <div style={chartCardStyle}>
@@ -1087,19 +1092,26 @@ function OverlayHistogramCard({
         <h3 style={chartTitleStyle}>{title}成績分布</h3>
       </div>
 
-      <div style={chartStatsWrapStyle}>
-        <div style={chartStatGroupStyle}>
+      <div className="distribution-stats" style={chartStatsWrapStyle}>
+        <div style={{ ...chartStatGroupStyle, background: "#f0f9ff", borderColor: "#bae6fd" }}>
           <span style={statsTagBlueStyle}>全國</span>
           <span style={chartStatTextStyle}>平均 {parentStats.mean.toFixed(2)}</span>
           <span style={chartStatTextStyle}>標準差 {parentStats.sd.toFixed(2)}</span>
           <span style={chartStatTextStyle}>人數 {parentStats.total.toLocaleString()}</span>
         </div>
 
-        <div style={chartStatGroupStyle}>
+        <div style={{ ...chartStatGroupStyle, background: "#fff7ed", borderColor: "#fed7aa" }}>
           <span style={statsTagGrayStyle}>甄選</span>
           <span style={chartStatTextStyle}>平均 {selectionStats.mean.toFixed(2)}</span>
           <span style={chartStatTextStyle}>標準差 {selectionStats.sd.toFixed(2)}</span>
           <span style={chartStatTextStyle}>人數 {selectionStats.total.toLocaleString()}</span>
+        </div>
+
+        <div style={{ ...chartStatGroupStyle, background: "#eff6ff", borderColor: "#bfdbfe" }}>
+          <span style={statsTagFilteredStyle}>模擬</span>
+          <span style={chartStatTextStyle}>平均 {filteredStats.mean.toFixed(2)}</span>
+          <span style={chartStatTextStyle}>標準差 {filteredStats.sd.toFixed(2)}</span>
+          <span style={chartStatTextStyle}>人數 {filteredStats.total.toLocaleString()}</span>
         </div>
       </div>
 
@@ -1130,7 +1142,7 @@ function OverlayHistogramCard({
             fontSize="15"
             fill="#2563eb"
           >
-            甄選人數
+            甄選／模擬人數
           </text>
 
           <text x="338" y="355" textAnchor="middle" fontSize="15" fill="#334155">
@@ -1174,12 +1186,10 @@ function OverlayHistogramCard({
             const baseX = 70;
             const slotWidth = chartWidth / bins.length;
 
-            const rawBarWidth = Math.max(slotWidth * 0.58, 3);
-            const filteredBarWidth = Math.max(slotWidth * 0.34, 2);
-
-            const xRaw = baseX + index * slotWidth + (slotWidth - rawBarWidth) / 2;
-            const xFiltered =
-              baseX + index * slotWidth + (slotWidth - filteredBarWidth) / 2;
+            const barWidth = Math.max(slotWidth * 0.38, 2.2);
+            const centerX = baseX + index * slotWidth + slotWidth / 2;
+            const xRaw = centerX - barWidth - 0.4;
+            const xFiltered = centerX + 0.4;
 
             const rawHeight = Number.isFinite(bin.selectionRawCount)
               ? (bin.selectionRawCount / rightMaxCount) * 250
@@ -1197,23 +1207,27 @@ function OverlayHistogramCard({
             return (
               <g key={index}>
                 <title>
-                  {`${bin.score}分 ｜ 全國(左軸) ${bin.parentCount} 人 ｜ 未篩選甄選(右軸) ${bin.selectionRawCount} 人 ｜ 篩選後(右軸) ${bin.selectionFilteredCount} 人`}
+                  {`${bin.score}分 ｜ 全國(左軸) ${bin.parentCount} 人 ｜ 甄選(右軸) ${bin.selectionRawCount} 人 ｜ 模擬(右軸) ${bin.selectionFilteredCount} 人`}
                 </title>
 
                 <rect
                   x={xRaw}
                   y={yRaw}
-                  width={rawBarWidth}
+                  width={barWidth}
                   height={rawHeight}
-                  fill="rgba(245, 183, 32, 0.75)"
+                  fill="#f97316"
+                  stroke="#c2410c"
+                  strokeWidth="0.35"
                   rx="2"
                 />
                 <rect
                   x={xFiltered}
                   y={yFiltered}
-                  width={filteredBarWidth}
+                  width={barWidth}
                   height={filteredHeight}
-                  fill="rgba(51, 96, 255, 0.82)"
+                  fill="#2563eb"
+                  stroke="#1d4ed8"
+                  strokeWidth="0.35"
                   rx="2"
                 />
 
@@ -1264,6 +1278,37 @@ function buildAreaPath(
 
   d += ` L ${points[points.length - 1].x} ${chartBottom} Z`;
   return d;
+}
+
+function deduplicateParentDistributions(
+  rows: ParentRowData[],
+  field: FilterField
+): ParentRowData[] {
+  const rowsByCategory = new Map<string, ParentRowData[]>();
+
+  rows.forEach((row) => {
+    const category = String(row.招生群類別 ?? "").trim();
+    const current = rowsByCategory.get(category) ?? [];
+    current.push(row);
+    rowsByCategory.set(category, current);
+  });
+
+  const seenSignatures = new Set<string>();
+  const deduplicated: ParentRowData[] = [];
+
+  rowsByCategory.forEach((categoryRows) => {
+    const signature = categoryRows
+      .map((row) => `${String(row.成績區間 ?? "").trim()}:${Number(row[field] || 0)}`)
+      .sort()
+      .join("|");
+
+    if (!seenSignatures.has(signature)) {
+      seenSignatures.add(signature);
+      deduplicated.push(...categoryRows);
+    }
+  });
+
+  return deduplicated;
 }
 
 function buildOverlayBins(
@@ -1378,13 +1423,6 @@ function parseScoreMid(value: unknown): number {
   if (matches.length === 1) return Number(matches[0]);
 
   return (Number(matches[0]) + Number(matches[1])) / 2;
-}
-
-function sumParentDistributionCounts(rows: ParentRowData[], field: FilterField) {
-  return rows.reduce((sum, row) => {
-    const count = Number(row[field] || 0);
-    return sum + (Number.isFinite(count) ? count : 0);
-  }, 0);
 }
 
 function buildYTicks(maxValue: number) {
@@ -1642,7 +1680,7 @@ const fieldBlockStyle: React.CSSProperties = {
 
 const fieldLabelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: "13px",
+  fontSize: "15px",
   fontWeight: 700,
   color: "#334155",
   marginBottom: "8px",
@@ -1678,7 +1716,7 @@ const dividerStyle: React.CSSProperties = {
 };
 
 const subSectionLabelStyle: React.CSSProperties = {
-  fontSize: "13px",
+  fontSize: "15px",
   fontWeight: 800,
   color: "#475569",
 };
@@ -1697,7 +1735,7 @@ const ratioCardStyle: React.CSSProperties = {
 };
 
 const ratioTitleStyle: React.CSSProperties = {
-  fontSize: "13px",
+  fontSize: "15px",
   fontWeight: 800,
   color: "#334155",
   marginBottom: "8px",
@@ -1760,41 +1798,6 @@ const cardHeaderStyle: React.CSSProperties = {
   marginBottom: "14px",
 };
 
-const summaryInfoGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-  gap: "12px",
-};
-
-const infoMiniCardStyle: React.CSSProperties = {
-  borderRadius: "16px",
-  padding: "14px",
-  border: "1px solid rgba(226,232,240,0.8)",
-  minHeight: "92px",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-};
-
-const infoMiniLabelStyle: React.CSSProperties = {
-  fontSize: "12px",
-  color: "#64748b",
-  marginBottom: "6px",
-  fontWeight: 700,
-};
-
-const infoMiniValueStyle: React.CSSProperties = {
-  fontSize: "22px",
-  fontWeight: 800,
-};
-
-const emptyStateStyle: React.CSSProperties = {
-  fontSize: "14px",
-  lineHeight: 1.8,
-  color: "#64748b",
-  padding: "8px 0 2px",
-};
-
 const summaryRowStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
@@ -1828,6 +1831,52 @@ const summarySubLabelStyle: React.CSSProperties = {
   marginTop: "6px",
   fontSize: "12px",
   color: "#64748b",
+};
+
+const scenarioBannerStyle: React.CSSProperties = {
+  marginTop: "14px",
+  padding: "16px 18px",
+  borderRadius: "18px",
+  border: "1px solid #dbeafe",
+  background: "linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%)",
+};
+
+const scenarioBannerTopStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "14px",
+};
+
+const scenarioEyebrowStyle: React.CSSProperties = {
+  fontSize: "12px",
+  color: "#2563eb",
+  fontWeight: 800,
+  marginBottom: "4px",
+};
+
+const scenarioTitleStyle: React.CSSProperties = {
+  fontSize: "17px",
+  color: "#0f172a",
+  fontWeight: 800,
+};
+
+const scenarioStatusStyle: React.CSSProperties = {
+  borderRadius: "999px",
+  padding: "6px 10px",
+  fontSize: "12px",
+  fontWeight: 800,
+  whiteSpace: "nowrap",
+};
+
+const scenarioMetaStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "8px 16px",
+  marginTop: "12px",
+  color: "#475569",
+  fontSize: "13px",
+  fontWeight: 700,
 };
 
 const stepFlowBoxStyle: React.CSSProperties = {
@@ -1899,13 +1948,13 @@ const chartsSectionTitleStyle: React.CSSProperties = {
 
 const chartGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))",
-  gap: "16px",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "20px",
 };
 
 const chartCardStyle: React.CSSProperties = {
   borderRadius: "20px",
-  padding: "28px",
+  padding: "30px 34px",
   background: "rgba(255,255,255,0.92)",
   border: "1px solid rgba(226,232,240,0.9)",
   boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
@@ -1927,50 +1976,57 @@ const chartTitleStyle: React.CSSProperties = {
 };
 
 const chartStatsWrapStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "18px",
-  marginBottom: "28px",
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "10px",
+  marginBottom: "20px",
 };
 
 const chartStatGroupStyle: React.CSSProperties = {
   display: "flex",
-  flexWrap: "wrap",
-  gap: "30px",
-  alignItems: "center",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: "5px",
+  padding: "11px",
+  borderRadius: "14px",
+  border: "1px solid #e2e8f0",
+  background: "#fbfdff",
 };
 
 const chartStatTextStyle: React.CSSProperties = {
-  fontSize: "18px",
+  fontSize: "16px",
   color: "#475569",
+  fontWeight: 700,
+  lineHeight: 1.45,
+};
+
+const statsTagBaseStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: "999px",
+  padding: "6px 12px",
   fontWeight: 800,
-    lineHeight: 1.7,
+  fontSize: "17px",
+  minWidth: "68px",
 };
 
 const statsTagBlueStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: "999px",
-  padding: "5px 10px",
+  ...statsTagBaseStyle,
   background: "#e0f2fe",
   color: "#0369a1",
-  fontWeight: 800,
-  fontSize: "22px",
-  minWidth: "84px",
 };
 
 const statsTagGrayStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: "999px",
-  padding: "5px 10px",
-  background: "#f1f5f9",
-  color: "#475569",
-  fontWeight: 800,
-  fontSize: "22px",
-  minWidth: "84px",
+  ...statsTagBaseStyle,
+  background: "#fff7ed",
+  color: "#b45309",
+};
+
+const statsTagFilteredStyle: React.CSSProperties = {
+  ...statsTagBaseStyle,
+  background: "#dbeafe",
+  color: "#1d4ed8",
 };
 
 const navButtonStyle: React.CSSProperties = {
